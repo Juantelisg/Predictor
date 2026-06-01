@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge — análisis deportivo</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#141a23; --panel2:#1b2230; --line:#232c3b;
+    --txt:#e6edf3; --dim:#8b97a7; --accent:#1ed760; --accent2:#19b34c;
+    --warn:#ffb020; --red:#ff5468; --chip:#202938;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+
+  /* top bar */
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .brand{font-size:20px;font-weight:800;letter-spacing:-.5px}
+  .brand b{color:var(--accent)}
+  .tabs{display:flex;gap:6px;margin-left:auto;background:var(--panel);padding:4px;border-radius:12px;border:1px solid var(--line)}
+  .tab{padding:7px 16px;border-radius:9px;color:var(--dim);cursor:pointer;font-weight:600;font-size:13px;transition:.12s;user-select:none}
+  .tab:hover{color:var(--txt)}
+  .tab.on{background:var(--accent);color:#06140a}
+  .sub{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:13px;margin:10px 2px 16px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .sub b{color:var(--txt)}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:.15s}
+  .card:hover{border-color:#31405a}
+  .card.edge{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2),0 6px 24px -12px rgba(30,215,96,.4)}
+  .chead{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+  .chead .when{font-weight:600;color:var(--txt)}
+  .badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px}
+  .b-edge{background:rgba(30,215,96,.15);color:var(--accent)}
+  .b-pass{background:var(--chip);color:var(--dim)}
+  .b-live{background:rgba(255,84,104,.15);color:var(--red)}
+
+  /* team rows */
+  .teams{padding:6px 14px 12px}
+  .row{display:flex;align-items:center;gap:10px;padding:9px 0}
+  .row+.row{border-top:1px solid var(--line)}
+  .ab{width:46px;height:30px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:8px;font-weight:800;font-size:12px;letter-spacing:.5px;flex:none}
+  .tinfo{flex:1;min-width:0}
+  .tname{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar{height:5px;background:var(--chip);border-radius:4px;margin-top:5px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:4px}
+  .conf{width:44px;text-align:right;font-weight:800;font-size:15px;flex:none}
+  .odd{width:58px;text-align:right;flex:none}
+  .odd b{font-weight:700;font-size:14px}
+  .odd small{display:block;color:var(--dim);font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fav .conf{color:var(--accent)}
+
+  /* toggle + player panel */
+  .toggle{display:flex;gap:4px;margin:0 14px 12px;background:var(--panel2);padding:3px;border-radius:9px}
+  .toggle div{flex:1;text-align:center;padding:6px;border-radius:7px;font-size:12px;font-weight:600;color:var(--dim);cursor:pointer}
+  .toggle div.on{background:var(--accent);color:#06140a}
+  .players{padding:0 14px 14px;font-size:12.5px}
+  .pteam{margin:8px 0 4px;color:var(--dim);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .pl{display:flex;align-items:center;gap:8px;padding:4px 0}
+  .pl .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pstat{color:var(--dim)}
+  .st-out{color:var(--red);font-weight:600}
+  .st-dtd{color:var(--warn);font-weight:600}
+  .note{margin-top:10px;padding:8px 10px;background:var(--chip);border-radius:8px;color:var(--dim);font-size:11.5px;line-height:1.4}
+  .note b{color:var(--warn)}
+
+  .empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:60px 20px}
+  .empty .big{font-size:34px;margin-bottom:8px}
+  .loading{color:var(--dim);padding:40px;text-align:center}
+  .foot{margin-top:30px;color:#5c6677;font-size:11px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Edge<b>.</b></div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <div class="sub"><span class="dot"></span><span id="substat">cargando…</span></div>
+  <div class="grid" id="grid"><div class="loading">cargando partidos…</div></div>
+  <div class="foot">
+    Confianza = probabilidad de consenso de-vigged entre casas. Verde = el modelo detecta divergencia con el prediction market (posible valor).<br>
+    Análisis con fines educativos / entretenimiento. Apostar implica riesgo de pérdida total.
+  </div>
+</div>
+
+<script>
+let SPORT = "mlb";
+const DATE = new Date().toISOString().slice(0,10);
+const fmtOdd = o => o==null ? "—" : (typeof o==="number" ? (o>0?"+"+o:""+o) : o);
+const pct = p => p==null ? "—" : Math.round(p*100)+"%";
+
+function fmtWhen(iso){
+  if(!iso) return "";
+  const d = new Date(iso.replace("Z","Z"));
+  const day = d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+  const hr = d.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  return `${day} · ${hr}`;
+}
+
+async function loadTabs(){
+  const sp = await (await fetch("/api/sports")).json();
+  document.getElementById("tabs").innerHTML = sp.map(s=>
+    `<div class="tab ${s.key===SPORT?'on':''}" data-k="${s.key}">${s.label}</div>`).join("");
+  document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+    SPORT=t.dataset.k;
+    document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.dataset.k===SPORT));
+    loadSlate();
+  });
+}
+
+function teamRow(name, abbr, fair, odd, book, fav){
+  return `<div class="row ${fav?'fav':''}">
+    <div class="ab">${abbr||name.slice(0,3).toUpperCase()}</div>
+    <div class="tinfo">
+      <div class="tname">${name}</div>
+      <div class="bar"><i style="width:${fair?Math.round(fair*100):0}%"></i></div>
+    </div>
+    <div class="odd"><b>${fmtOdd(odd)}</b><small>${book||""}</small></div>
+    <div class="conf">${pct(fair)}</div>
+  </div>`;
+}
+
+function card(g){
+  const live = g.status && g.status!=="not_started" && !/final/i.test(g.status);
+  const badge = g.is_candidate ? `<span class="badge b-edge">▲ EDGE ${Math.round(g.edge*100)}%</span>`
+              : live ? `<span class="badge b-live">EN JUEGO</span>`
+              : `<span class="badge b-pass">PASAR</span>`;
+  const homeFav = (g.fair_home||0) >= (g.fair_away||0);
+  return `<div class="card ${g.is_candidate?'edge':''}" id="c-${g.event_id}">
+    <div class="chead"><span class="when">${fmtWhen(g.start_time)}</span> ${badge}</div>
+    <div class="teams">
+      ${teamRow(g.away, g.away_abbr, g.fair_away, g.odds_away, g.odds_away_book, !homeFav)}
+      ${teamRow(g.home, g.home_abbr, g.fair_home, g.odds_home, g.odds_home_book, homeFav)}
+    </div>
+    <div class="toggle">
+      <div class="on" data-v="equipos">Equipos</div>
+      <div data-v="jugadores">Jugadores</div>
+    </div>
+    <div class="players" id="p-${g.event_id}" style="display:none"></div>
+  </div>`;
+}
+
+async function showPlayers(g, box){
+  box.innerHTML = `<div class="pstat">cargando jugadores…</div>`;
+  const q = new URLSearchParams({sport:SPORT, home:g.home, away:g.away, event_id:g.event_id, date:DATE});
+  const d = await (await fetch("/api/players?"+q)).json();
+  let html = "";
+  if(d.type==="mlb"){
+    const s=d.starters;
+    if(s){
+      html += `<div class="pteam">Abridores</div>
+        <div class="pl"><span class="nm">${g.away}</span><span class="pstat">${s.away[0]||'?'} · ERA ${s.away[1]||'-'}</span></div>
+        <div class="pl"><span class="nm">${g.home}</span><span class="pstat">${s.home[0]||'?'} · ERA ${s.home[1]||'-'}</span></div>`;
+    } else html += `<div class="pstat">Abridores no publicados aún.</div>`;
+    if(d.lineup) html += `<div class="pteam">Lineup de bateo publicado ✓</div>`;
+  } else if(d.type==="nba"){
+    const inj=d.injuries||{};
+    for(const team in inj){
+      html += `<div class="pteam">${team}</div>`;
+      if(inj[team].length) inj[team].forEach(i=>{
+        const cls = /out/i.test(i.status)?'st-out':/day/i.test(i.status)?'st-dtd':'';
+        html += `<div class="pl"><span class="nm">${i.name}</span><span class="pstat ${cls}">${i.status||''}</span></div>`;
+      }); else html += `<div class="pl"><span class="pstat">sin bajas reportadas</span></div>`;
+    }
+  } else if(d.type==="soccer"){
+    const lu=d.lineups||{};
+    for(const team in lu){
+      html += `<div class="pteam">${team} ${lu[team].formation?'· '+lu[team].formation:''}</div>`;
+      (lu[team].starting||[]).slice(0,11).forEach(n=> html += `<div class="pl"><span class="nm">${n}</span></div>`);
+    }
+    if(!Object.keys(lu).length) html += `<div class="pstat">XI no publicado aún (se publica ~1h antes).</div>`;
+  } else html += `<div class="pstat">Sin datos de jugadores para este deporte.</div>`;
+
+  html += `<div class="note"><b>Props de jugadores en construcción.</b> Hoy se muestra disponibilidad y forma reales; los logros individuales con % de acierto (hit-rate) llegan cuando el modelo incorpore props.</div>`;
+  box.innerHTML = html;
+}
+
+async function loadSlate(){
+  const grid=document.getElementById("grid");
+  grid.innerHTML=`<div class="loading">cargando partidos…</div>`;
+  const r = await (await fetch(`/api/slate?sport=${SPORT}&date=${DATE}`)).json();
+  const games = r.games||[];
+  const cand = games.filter(g=>g.is_candidate).length;
+  document.getElementById("substat").innerHTML =
+    `<b>${games.length}</b> partidos hoy · <b>${cand}</b> con edge detectado · ${r.date}`;
+  if(!games.length){
+    grid.innerHTML=`<div class="empty"><div class="big">🌙</div>No hay partidos de ${SPORT.toUpperCase()} hoy.</div>`;
+    return;
+  }
+  // candidatos primero
+  games.sort((a,b)=>(b.edge||0)-(a.edge||0));
+  grid.innerHTML = games.map(card).join("");
+  games.forEach(g=>{
+    const c=document.getElementById("c-"+g.event_id);
+    const box=document.getElementById("p-"+g.event_id);
+    const tgs=c.querySelectorAll(".toggle div");
+    tgs.forEach(t=>t.onclick=()=>{
+      tgs.forEach(x=>x.classList.toggle("on",x===t));
+      if(t.dataset.v==="jugadores"){ box.style.display="block"; if(!box.dataset.loaded){box.dataset.loaded=1; showPlayers(g,box);} }
+      else box.style.display="none";
+    });
+  });
+}
+
+loadTabs().then(loadSlate);
+setInterval(loadSlate, 60000);
+</script>
+</body>
+</html>
