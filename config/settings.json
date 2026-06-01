@@ -1,0 +1,41 @@
+{
+  "version": "0.1.0",
+  "bankroll": {
+    "_comment": "Tu bankroll de referencia. El supra-agente reporta stake como % de este número.",
+    "amount": 1000,
+    "currency": "USD"
+  },
+  "edge_thresholds": {
+    "_comment": "Tiers de value (model_prob - market_prob). Por debajo de min_to_recommend → PASAR.",
+    "strong_min": 0.05,
+    "moderate_min": 0.02,
+    "min_to_recommend": 0.02
+  },
+  "kelly": {
+    "_comment": "Fracción de Kelly aplicada al output del cálculo. 0.25 = quarter-Kelly (default conservador).",
+    "fraction": 0.25,
+    "max_stake_pct_strong": 0.04,
+    "max_stake_pct_moderate": 0.02,
+    "max_stake_pct_prop": 0.01
+  },
+  "min_signals_required": 2,
+  "logging": {
+    "predictions_dir": "predictions",
+    "evaluations_dir": "evaluations",
+    "reports_dir": "reports",
+    "format": "jsonl",
+    "rotation": "daily"
+  },
+  "data_sources": {
+    "primary_odds": ["the_odds_api", "markets", "polymarket"],
+    "primary_stats": ["nba-data", "mlb-data", "football-data"],
+    "cache_dir": "data",
+    "cache_ttl_minutes": 15
+  },
+  "responsible_gambling": {
+    "disclaimer_required": true,
+    "stop_loss_pct_daily": 0.05,
+    "stop_loss_pct_weekly": 0.10,
+    "max_picks_per_day": 5
+  }
+}

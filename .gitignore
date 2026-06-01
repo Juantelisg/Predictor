@@ -1,0 +1,34 @@
+# secrets
+config/.env
+*.env
+!.env.example
+*.key
+*.pem
+
+# cache
+data/odds/
+data/stats/
+data/cache/
+*.cache
+
+# candidatos: salida transitoria del scanner (se regeneran)
+candidates/
+
+# predictions/evaluations son source of truth — SE COMITEAN
+# (la auditabilidad histórica importa más que la privacidad de tus picks)
+# Si querés excluir picks personales, mover a un repo aparte.
+
+# logs
+*.log
+
+# python venv si se usa
+.venv/
+__pycache__/
+*.pyc
+
+# editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

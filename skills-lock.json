@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "betting": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/betting/SKILL.md",
+      "computedHash": "f43e2f6c9c4fd78387a92033b92fd6889e36d2f83eb8110e43d240064cdfdf26"
+    },
+    "football-data": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/football-data/SKILL.md",
+      "computedHash": "d7e0fe6782757e362b79e7829d99832d328c3312244c4a943daebfd7c39792d0"
+    },
+    "markets": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/markets/SKILL.md",
+      "computedHash": "a635a06b9240f10cc6dc04e7c53ae94037135bd2cc07ec7586499bc7e18501bb"
+    },
+    "mlb-data": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mlb-data/SKILL.md",
+      "computedHash": "99a24fda4045c49d3a4bef169d17f50dd5a2db61332c57ce09183c041274133a"
+    },
+    "nba-data": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nba-data/SKILL.md",
+      "computedHash": "471d7f6c7c0db38264d022a057b30b31a25a358d1b8174a2a20ebebab925a66a"
+    },
+    "polymarket": {
+      "source": "machina-sports/sports-skills",
+      "sourceType": "github",
+      "skillPath": "skills/polymarket/SKILL.md",
+      "computedHash": "ccfbdfecf8c9bfa2b07db616363b8f0c6ab9d41f7c4974b3a02cbd19843c892f"
+    },
+    "sports-betting-analyzer": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/sports-betting-analyzer/SKILL.md",
+      "version": "0.1.0"
+    }
+  }
+}
