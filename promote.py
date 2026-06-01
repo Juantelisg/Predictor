@@ -27,16 +27,25 @@ def load_candidates(date, sport):
 
 
 def build_packets(date, sport):
-    """Cada candidato + su contexto (abridores en MLB) para análisis de Opus."""
+    """Cada candidato + disponibilidad de jugadores (sport-aware) para análisis de Opus."""
     cands = load_candidates(date, sport)
-    ctx = {}
-    if sport == "mlb" and cands:
-        try:
-            from mlb_starters import probable_pitchers
-            ctx = probable_pitchers(date)
-        except Exception:
-            ctx = {}
-    return [{"candidate": c, "starters": ctx.get(c["match"])} for c in cands]
+    if not cands:
+        return []
+    import availability
+    mlb_av = availability.for_game("mlb", date=date) if sport == "mlb" else None
+    packets = []
+    for c in cands:
+        away, home = (c["match"].split(" @ ") + [None, None])[:2]
+        if sport == "mlb":
+            ctx = {"type": "mlb",
+                   "starters": mlb_av["starters"].get(c["match"]) if mlb_av else None,
+                   "lineup": mlb_av["lineups"].get(c["match"]) if mlb_av else None}
+        elif sport == "nba":
+            ctx = availability.for_game("nba", home=home, away=away)
+        else:
+            ctx = availability.for_game(sport, event_id=c.get("event_id"))
+        packets.append({"candidate": c, "availability": ctx})
+    return packets
 
 
 def append_prediction(pred):
@@ -68,9 +77,20 @@ def main():
         print(f"  - {c['selection']}  | edge {c['edge_provisional']*100:.1f}% | "
               f"fair {c['fair_prob_devigged']:.3f} vs PM {c['market_prob']:.3f} | "
               f"mejor cuota {c['book_odds_american']}@{c['book']}")
-        if pk["starters"]:
-            s = pk["starters"]
+        av = pk["availability"]
+        if av.get("type") == "mlb" and av.get("starters"):
+            s = av["starters"]
             print(f"      SP: {s['away'][0]} (ERA {s['away'][1]}) @ {s['home'][0]} (ERA {s['home'][1]})")
+            if av.get("lineup"):
+                print(f"      lineup de bateo publicado")
+        elif av.get("type") == "nba" and av.get("injuries"):
+            for team, inj in av["injuries"].items():
+                bad = [i["name"] for i in inj if i.get("status") in ("Out", "Doubtful", "Day-To-Day")]
+                if bad:
+                    print(f"      {team} (afectados): {', '.join(bad)}")
+        elif av.get("type") == "soccer" and av.get("lineups"):
+            for team, lu in av["lineups"].items():
+                print(f"      {team} XI: {', '.join(lu['starting'][:11])}")
         print(f"      -> Opus: asignar model_prob + 2 señales, decidir APOSTAR/PASAR, append_prediction()\n")
 
 

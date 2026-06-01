@@ -351,7 +351,7 @@ ESPN (slate) + The Odds API (16 books) + Polymarket (pred market)
     scan.py <sport> [fecha]      -> candidates/<fecha>_<sport>.jsonl
     (de-vig consenso multi-book vs Polymarket; flag divergencia >= 2%)
         |
-    promote.py <sport> [fecha]   -> "packets" enriquecidos (abridores MLB, etc.) para Opus
+    promote.py <sport> [fecha]   -> "packets" + disponibilidad sport-aware (XI fútbol / lesionados NBA / abridores MLB) para Opus
     (Opus asigna model_prob + 2 señales, decide; promote.append_prediction() escribe)
         |
     predictions/<fecha>.jsonl
@@ -365,7 +365,7 @@ ESPN (slate) + The Odds API (16 books) + Polymarket (pred market)
 |---|---|---|
 | `scan.py` | #1 | Scanner cross-source. The Odds API multi-book (mediana de-vigged) vs Polymarket. Caché 15min. Maneja colisión de series multi-día (elige commence más cercano). |
 | `totals.py` | #4 | Line-shopping de over/under (consenso + mejor número/precio por casa). Sin ancla de pred market (MLB no tiene en Polymarket) → `needs_model`. |
-| `mlb_starters.py` | #3 | Abridores probables + ERA vía MLB Stats API (`statsapi.mlb.com`, sin key). Cubre el gap de la skill `mlb-data`. |
+| `availability.py` | #3 | Disponibilidad de jugadores **por deporte** (input para Opus antes del model_prob): MLB abridores+ERA+lineup (MLB Stats API), NBA lesionados (skill nba-data), soccer XI inicial+banco (skill football-data). NFL pendiente (sin skill). `mlb_starters.py` es el helper MLB que reutiliza. |
 | `promote.py` | #2 | Enriquece candidatos para Opus + `append_prediction()` schema-correcto. El juicio lo pone Opus, no el script. |
 | `evaluate.py` | #5 | Resuelve predicciones moneyline contra score real (skill del sport) → evaluations/. |
 | `report.py` | #8 | Calibración automática desde predictions/ + evaluations/. Lee JSONL con `utf-8-sig` (tolera BOM de PowerShell). |
