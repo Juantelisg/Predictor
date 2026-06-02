@@ -127,14 +127,26 @@ def props(date: str = None, home: str = None, away: str = None, sport: str = "ml
     return {"date": date, "match": f"{away} @ {home}", "picks": picks}
 
 
+@app.get("/api/trends")
+def trends(sport: str = "mlb", date: str = None, market: str = None,
+           min_rate: float = 0.7, last_n: int = 10):
+    """Feed cross-game de los hot picks del día (todos los partidos pre-partido)."""
+    date = date or datetime.date.today().isoformat()
+    if sport != "mlb":
+        return {"date": date, "trends": [], "note": "Trends de jugadores: solo MLB por ahora."}
+    import player_props
+    mk = market if market and market not in ("All", "Todos") else None
+    return {"date": date, "market": market, "trends": player_props.trends(date, float(min_rate), int(last_n), mk)}
+
+
 @app.get("/api/gamelog")
-def gamelog(player_id: int, statkey: str, label: str, line: float, side: str,
-            season: int = None, date: str = None):
-    """Tabla de últimos partidos del jugador para un prop, marcando si pegó."""
+def gamelog(player_id: int, label: str, line: float, side: str, season: int = None,
+            date: str = None, mode: str = "all", opp: str = None):
+    """Tabla del gamelog para un prop, con split: all|last10|h2h|home|away."""
     import player_props
     season = season or (int(date[:4]) if date else datetime.date.today().year)
-    rows = player_props.gamelog_table(player_id, season, statkey, label, float(line), side, before=date)
-    return {"rows": rows}
+    return player_props.gamelog_table(player_id, season, label, float(line), side,
+                                      before=date, mode=mode, opp=opp)
 
 
 @app.get("/api/players")

@@ -1,0 +1,4 @@
+1. En la imagen puedes ver un home, arriba un navbar que tiene un dropdown con los deportes: MLB, NFL, NBA, SOCCER: PL, LA LIGA, LIGUE 01, BUNDES, MLS, SERIEA, UCL.	
+2. Hay una opción de trends en el navbar que te muestran los hot picks del dia (puede ser de jugador o de team)
+3. tienes la opción de ver player o team, y puedes aplicar un filtro de los mercados (ver imagenes).
+4. Cuando te paras encima de un picks de player o team puedes ver al costado un gamelog que es básicamente los stats de ese player o team last-10/head to head/home splits. 
