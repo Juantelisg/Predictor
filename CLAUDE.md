@@ -405,3 +405,18 @@ Levantar: `C:\Users\Juant\AppData\Local\Python\bin\python.exe -m uvicorn web.app
 **Producto = Digest automatizado (3 ingredientes ya controlados):** `trends()` (candidatos) + The Odds API (cuotas) + devig/edge/Opus (veredicto) → shortlist "de N tendencias, estas 4 valen".
 
 **PRÓXIMO PASO (paso 3):** cruzar `trends()` × cuota real del prop (match jugador+mercado+línea) → de-vig → edge (hit-rate vs prob. implícita) → veredicto de Opus (APOSTAR/PASAR). Demo con 1 partido end-to-end, después escalar. Reusar `betting.devig`. No más pulido de UI de browsing.
+
+### Sesión 2026-06-02 (cont.) — Capa de veredicto EV+ implementada (paso 3) + calibración + filtro de pool
+
+**`prop_value.py` (nuevo) — la capa de veredicto.** Pipeline runtime: **GAMELOG → CUOTA → VEREDICTO**.
+`top_picks()` (candidatos hit-rate) → The Odds API `events/{id}/odds` (cuota real, match jugador+mercado+línea normalizado, mediana multi-book) → `betting.devig` (prob. implícita) → modelo calibrado → edge → APOSTAR/PASAR. `verdict_for_game(date, away, home)`. Quota: ~5 req/partido (1 por mercado). MARKET_MAP traduce etiquetas ES→keys de The Odds API; es lo único MLB-específico (NBA = otro MARKET_MAP + candidate-gen de básquet, el resto se reusa).
+
+**`backtest_props.py` (nuevo) — harness de calibración. Cero quota.** Walk-forward sobre la temporada: en cada juego estima `model_prob` con SOLO juegos previos y compara contra el resultado real → reliability table + Brier. `sweep` compara modelos/K.
+
+**Hallazgo y fix de calibración (clave):** el modelo naive (over-rate L10 → shrink a temporada) estaba **sobre-confiado +12.6 pts** en la zona de apuesta (decía 77%, pegaba 65%) → "encontraba" edges falsos de +18-38% en casi todos los props. Fix: **regresión a la media POBLACIONAL (Beta-Binomial), K=30** — la tasa del jugador se regresa hacia la media de la liga. Resultado: sobre-confianza +12.6 → **+0.2 pts**, Brier 0.1917 → **0.1856**, calibrado en los 10 buckets. Constante `POP_K=30` (tunable por meta-agente).
+
+**Filtro de titulares + limpieza del pool** (el over-confidence tapaba esto): el pool metía suplentes (rate distorsionado por playing-time). 3 señales de titularidad por autoridad: (1) **lineup confirmado** `availability.mlb_lineups` (manda cuando está, ~1-2h antes); (2) **props del book** (drop SIN CUOTA = voto de playing-time del mercado); (3) **piso `AB/L10 ≥ 2.8` + `≥15 juegos`**. + guards de cuota: `MIN_BOOKS≥2` (liquidez), backstop devig, y **`MAX_EDGE=15%`** (ningún edge real de props es ±47% → es bug de línea/match, no value). Reporte transparente de qué cayó y por qué. Demo Tigers@Rays: 22 candidatos → 7 props creíbles, edges −2% a +4.8%.
+
+**Gotchas nuevos:** The Odds API prop outcome = `description` (jugador), `name` (Over/Under), `point` (línea), `price` (american). Mercados finos (singles, carreras) sueltan líneas degeneradas que varían por fetch → por eso los guards. El header `x-requests-used` es ACUMULADO del mes, no el costo de la llamada (medir delta de `x-requests-remaining`). Baselines poblacionales cacheadas 24h con claves `'label|line'` (cache.py usa JSON, no soporta claves tupla).
+
+**PRÓXIMO PASO:** **ajuste por pitcher rival** — el modelo es incondicional (ignora al abridor de hoy); el book sí lo pricea. Es la causa principal de edges residuales espurios. Después: forward-test del ROL del edge (loguear a `predictions/` → `evaluations/` al cierre; The Odds API free no da cuotas históricas para backtest del edge).
