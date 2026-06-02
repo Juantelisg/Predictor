@@ -379,4 +379,29 @@ ESPN (slate) + The Odds API (16 books) + Polymarket (pred market)
 
 **#6 Kalshi (segundo ancla) — NO viable hoy:** la skill `markets` solo expone *futures de campeonato* para MLB ("Will X win the 2026 Championship?"), no mercados per-game. Queda pendiente hasta tener una fuente per-game de Kalshi.
 
-**Player props (#4 extendido) — pendiente:** requiere el endpoint per-event de props de The Odds API + un modelo de distribución empírica (últimos N juegos). Es más grande que el MVP; documentado como próximo paso.
+---
+
+## Sesión 2026-06-02 — Dashboard web + motor de player props/trends + PIVOTE
+
+**Front web (FastAPI + HTML oscuro, estética Linemate):** `web/app.py` + `web/index.html`.
+Levantar: `C:\Users\Juant\AppData\Local\Python\bin\python.exe -m uvicorn web.app:app --port 8801` → http://localhost:8801.
+(uvicorn NO recarga solo: al editar `app.py` o módulos, matar el puerto y relanzar. 8800 quedó con proceso zombie → usar 8801.)
+- **Home**: grilla de partidos → resumen (confianza de equipo + props del partido).
+- **Trends**: feed cross-game de hot picks + filtro de mercado + gamelog con splits All/Last10/H2H/Local/Visita.
+- Endpoints: `/api/slate`, `/api/recommendations`, `/api/props`, `/api/trends`, `/api/gamelog`, `/api/players`.
+
+**Módulos nuevos:**
+- `player_props.py` — props MLB por hit-rate (lineup/plantel → game logs MLB Stats API → hits/TB/R/RBI/HR/H+R+RBI/singles/dobles/SB/ponches). `trends()` cross-game, `gamelog_table()` con splits. Cache `mlbgl2:` 3h, fetch paralelo, excluye el partido del día, filtra unders triviales.
+- `availability.py` — disponibilidad por deporte (MLB abridores+lineup / NBA lesionados / soccer XI; NFL pendiente). `mlb_starters.py` es su helper.
+- `soccer_odds.py` — fútbol 3 vías (1X2) desde The Odds API (ligas activas; top-5 EU off-season jun).
+
+**Gotchas:** docstring con `C:\Users\...` → `\U` rompe Python, usar `r"""`. No mostrar odds de `status=live` como pre-partido. statsapi team ids ≠ ESPN. Lineup MLB sale ~1-2h antes → fallback al plantel.
+
+### PIVOTE ESTRATÉGICO (retomar acá)
+**Decisión: dejar de rebuildear Linemate (UI de browsing = commodity). Pararse ENCIMA como capa de veredicto EV+** — lo que Linemate NO hace: decir si un pick es valor real o trampa ya priceada.
+- Las funciones de Linemate (picks + gamelog) ya las generamos nativamente. NO scrapear Linemate (sus cuotas = licenciadas).
+- **Confirmado: The Odds API da cuotas de player props** (`/sports/baseball_mlb/events/{id}/odds?markets=batter_hits,batter_total_bases,batter_home_runs,batter_rbis`). Ej: Yandy Diaz Over 1.5 hits @ +173. Free 500/mes corto → tier pago para uso diario.
+
+**Producto = Digest automatizado (3 ingredientes ya controlados):** `trends()` (candidatos) + The Odds API (cuotas) + devig/edge/Opus (veredicto) → shortlist "de N tendencias, estas 4 valen".
+
+**PRÓXIMO PASO (paso 3):** cruzar `trends()` × cuota real del prop (match jugador+mercado+línea) → de-vig → edge (hit-rate vs prob. implícita) → veredicto de Opus (APOSTAR/PASAR). Demo con 1 partido end-to-end, después escalar. Reusar `betting.devig`. No más pulido de UI de browsing.
