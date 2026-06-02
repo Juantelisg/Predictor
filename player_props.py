@@ -10,6 +10,7 @@ Sin cuotas por ahora (The Odds API cobra caro las props); el hit-rate es el core
 Uso CLI: python player_props.py 2026-06-01 "Detroit Tigers" "Tampa Bay Rays"
 """
 import sys, datetime, requests
+from concurrent.futures import ThreadPoolExecutor
 import cache
 
 B = "https://statsapi.mlb.com/api/v1"
@@ -33,22 +34,35 @@ def _season(date):
     return int(date[:4]) if date else datetime.date.today().year
 
 
+def _roster_batters(team_id, team_name, opp_name):
+    """Bateadores del plantel activo (fallback cuando el lineup confirmado no salió)."""
+    try:
+        r = requests.get(f"{B}/teams/{team_id}/roster", params={"rosterType": "active"}, timeout=15).json()
+        return [(p["person"]["id"], p["person"]["fullName"], team_name, opp_name)
+                for p in r.get("roster", []) if p.get("position", {}).get("type") != "Pitcher"]
+    except Exception:
+        return []
+
+
 def game_batters(date, away_name, home_name):
-    """[(player_id, nombre, equipo, rival)] del lineup publicado del partido. [] si no hay."""
+    """[(player_id, nombre, equipo, rival)] del partido: lineup confirmado, o plantel si no salió."""
     sch = requests.get(f"{B}/schedule",
                        params={"sportId": 1, "date": date, "hydrate": "lineups,team"}, timeout=15).json()
     games = sch.get("dates", [{}])[0].get("games", []) if sch.get("dates") else []
     for g in games:
-        h = g["teams"]["home"]["team"]["name"]
-        a = g["teams"]["away"]["team"]["name"]
-        if h == home_name and a == away_name:
+        h, a = g["teams"]["home"], g["teams"]["away"]
+        if h["team"]["name"] == home_name and a["team"]["name"] == away_name:
             lu = g.get("lineups", {}) or {}
             out = []
             for p in lu.get("awayPlayers", []):
-                out.append((p["id"], p.get("fullName"), a, h))
+                out.append((p["id"], p.get("fullName"), a["team"]["name"], h["team"]["name"]))
             for p in lu.get("homePlayers", []):
-                out.append((p["id"], p.get("fullName"), h, a))
-            return out
+                out.append((p["id"], p.get("fullName"), h["team"]["name"], a["team"]["name"]))
+            if out:
+                return out
+            # lineup no publicado -> usar el plantel activo (bateadores probables)
+            return (_roster_batters(a["team"]["id"], a["team"]["name"], h["team"]["name"]) +
+                    _roster_batters(h["team"]["id"], h["team"]["name"], a["team"]["name"]))
     return []
 
 
@@ -102,12 +116,17 @@ def props_for_player(pid, name, team, opp, rows, last_n=10):
 def top_picks(date, away_name, home_name, min_rate=0.7, last_n=10):
     """Props de todos los bateadores del partido con hit-rate >= min_rate, ordenados."""
     season = _season(date)
-    picks = []
-    for pid, name, team, opp in game_batters(date, away_name, home_name):
+    batters = game_batters(date, away_name, home_name)
+
+    def _work(b):
+        pid, name, team, opp = b
         rows = [r for r in gamelog(pid, season) if not r["date"] or r["date"] < date]   # solo partidos previos
-        for p in props_for_player(pid, name, team, opp, rows, last_n):
-            if p["rate"] >= min_rate:
-                picks.append(p)
+        return [p for p in props_for_player(pid, name, team, opp, rows, last_n) if p["rate"] >= min_rate]
+
+    picks = []
+    with ThreadPoolExecutor(max_workers=8) as ex:   # game logs en paralelo (1ra carga ~3s vs ~19s)
+        for res in ex.map(_work, batters):
+            picks.extend(res)
     picks.sort(key=lambda p: (p["rate"], p["hit"]), reverse=True)
     return picks
 
