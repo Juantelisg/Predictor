@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Edge — análisis deportivo</title>
+<title>Edge — tablero de análisis</title>
 <style>
   :root{
     --bg:#0a0e14; --panel:#141a23; --panel2:#1b2230; --line:#232c3b;
@@ -11,67 +11,61 @@
     --warn:#ffb020; --red:#ff5468; --chip:#202938;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-  a{color:inherit}
-  .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
-
-  /* top bar */
-  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  body{background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 16px 60px}
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .brand{font-size:20px;font-weight:800;letter-spacing:-.5px}
   .brand b{color:var(--accent)}
   .tabs{display:flex;gap:6px;margin-left:auto;background:var(--panel);padding:4px;border-radius:12px;border:1px solid var(--line)}
-  .tab{padding:7px 16px;border-radius:9px;color:var(--dim);cursor:pointer;font-weight:600;font-size:13px;transition:.12s;user-select:none}
-  .tab:hover{color:var(--txt)}
-  .tab.on{background:var(--accent);color:#06140a}
-  .sub{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:13px;margin:10px 2px 16px}
+  .tab{padding:7px 16px;border-radius:9px;color:var(--dim);cursor:pointer;font-weight:600;font-size:13px;user-select:none}
+  .tab:hover{color:var(--txt)} .tab.on{background:var(--accent);color:#06140a}
+  .sub{display:flex;align-items:center;gap:9px;color:var(--dim);font-size:13px;margin:11px 2px 16px}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
   .sub b{color:var(--txt)}
 
-  /* grid */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:.15s}
-  .card:hover{border-color:#31405a}
-  .card.edge{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2),0 6px 24px -12px rgba(30,215,96,.4)}
-  .chead{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
-  .chead .when{font-weight:600;color:var(--txt)}
-  .badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px}
-  .b-edge{background:rgba(30,215,96,.15);color:var(--accent)}
-  .b-pass{background:var(--chip);color:var(--dim)}
-  .b-live{background:rgba(255,84,104,.15);color:var(--red)}
+  /* board: dos columnas */
+  .board{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+  @media(max-width:820px){.board{grid-template-columns:1fr}}
+  .col h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin:0 2px 10px;font-weight:700}
+  .col h2 .n{color:var(--accent);margin-left:6px}
 
-  /* team rows */
-  .teams{padding:6px 14px 12px}
-  .row{display:flex;align-items:center;gap:10px;padding:9px 0}
-  .row+.row{border-top:1px solid var(--line)}
-  .ab{width:46px;height:30px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:8px;font-weight:800;font-size:12px;letter-spacing:.5px;flex:none}
-  .tinfo{flex:1;min-width:0}
-  .tname{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bar{height:5px;background:var(--chip);border-radius:4px;margin-top:5px;overflow:hidden}
-  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:4px}
-  .conf{width:44px;text-align:right;font-weight:800;font-size:15px;flex:none}
-  .odd{width:58px;text-align:right;flex:none}
-  .odd b{font-weight:700;font-size:14px}
-  .odd small{display:block;color:var(--dim);font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .fav .conf{color:var(--accent)}
+  /* fila de partido (panel izquierdo) */
+  .game{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:9px;transition:.12s}
+  .game:hover{border-color:#31405a}
+  .game.live{opacity:.62}
+  .grow{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim)}
+  .grow .live-b{color:var(--red);font-weight:700}
+  .grow .lg{margin-left:auto;font-size:10.5px;background:var(--chip);padding:2px 7px;border-radius:10px}
+  .match{font-weight:600;font-size:14.5px;margin:5px 0 6px}
+  .read{display:flex;align-items:center;gap:8px;font-size:13px}
+  .read .fav{color:var(--accent);font-weight:700}
+  .read .pct{font-weight:800;font-size:15px}
+  .read .od{margin-left:auto;color:var(--dim)}
+  .read .od b{color:var(--txt)}
+  .draw{color:var(--dim);font-size:11.5px;margin-top:3px}
+  .more{margin-top:8px;font-size:11.5px;color:var(--accent);cursor:pointer;user-select:none}
+  .more:hover{text-decoration:underline}
+  .pbox{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);font-size:12.5px;display:none}
+  .pteam{color:var(--dim);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin:6px 0 3px}
+  .pl{display:flex;gap:8px;padding:3px 0}.pl .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl .s{color:var(--dim)} .st-out{color:var(--red);font-weight:600}.st-dtd{color:var(--warn);font-weight:600}
+  .pnote{margin-top:8px;color:var(--dim);font-size:11px;background:var(--chip);padding:6px 8px;border-radius:7px}
 
-  /* toggle + player panel */
-  .toggle{display:flex;gap:4px;margin:0 14px 12px;background:var(--panel2);padding:3px;border-radius:9px}
-  .toggle div{flex:1;text-align:center;padding:6px;border-radius:7px;font-size:12px;font-weight:600;color:var(--dim);cursor:pointer}
-  .toggle div.on{background:var(--accent);color:#06140a}
-  .players{padding:0 14px 14px;font-size:12.5px}
-  .pteam{margin:8px 0 4px;color:var(--dim);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-  .pl{display:flex;align-items:center;gap:8px;padding:4px 0}
-  .pl .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pstat{color:var(--dim)}
-  .st-out{color:var(--red);font-weight:600}
-  .st-dtd{color:var(--warn);font-weight:600}
-  .note{margin-top:10px;padding:8px 10px;background:var(--chip);border-radius:8px;color:var(--dim);font-size:11.5px;line-height:1.4}
-  .note b{color:var(--warn)}
+  /* recomendados (panel derecho) */
+  .rec{background:var(--panel);border:1px solid var(--accent2);border-radius:13px;padding:13px 14px;margin-bottom:10px;box-shadow:0 0 0 1px rgba(30,215,96,.12)}
+  .rec .tag{font-size:10.5px;font-weight:800;letter-spacing:.5px;color:var(--accent);margin-bottom:5px}
+  .rec .mt{font-size:12px;color:var(--dim)}
+  .rec .play{font-size:16px;font-weight:800;margin:3px 0 9px}
+  .rec .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:12px}
+  .rec .kv{background:var(--panel2);border-radius:8px;padding:6px 9px}
+  .rec .kv span{display:block;color:var(--dim);font-size:10.5px} .rec .kv b{font-size:14px}
+  .rec .why{margin-top:9px;font-size:12px;color:var(--dim);line-height:1.4}
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:13px;padding:26px 18px;text-align:center;color:var(--dim);font-size:13px;line-height:1.55}
+  .empty .big{font-size:30px;margin-bottom:8px}
+  .empty b{color:var(--txt)}
 
-  .empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:60px 20px}
-  .empty .big{font-size:34px;margin-bottom:8px}
-  .loading{color:var(--dim);padding:40px;text-align:center}
-  .foot{margin-top:30px;color:#5c6677;font-size:11px;text-align:center;line-height:1.6}
+  .loading{color:var(--dim);padding:30px;text-align:center}
+  .foot{margin-top:26px;color:#5c6677;font-size:11px;text-align:center;line-height:1.6}
 </style>
 </head>
 <body>
@@ -81,134 +75,160 @@
     <div class="tabs" id="tabs"></div>
   </div>
   <div class="sub"><span class="dot"></span><span id="substat">cargando…</span></div>
-  <div class="grid" id="grid"><div class="loading">cargando partidos…</div></div>
+
+  <div class="board">
+    <div class="col">
+      <h2>Partidos de hoy <span class="n" id="ngames"></span></h2>
+      <div id="left"><div class="loading">cargando…</div></div>
+    </div>
+    <div class="col">
+      <h2>Recomendados por el modelo <span class="n" id="nrec"></span></h2>
+      <div id="right"></div>
+    </div>
+  </div>
+
   <div class="foot">
-    Confianza = probabilidad de consenso de-vigged entre casas. Verde = el modelo detecta divergencia con el prediction market (posible valor).<br>
+    <b>Confianza</b> = probabilidad que el mercado (consenso de casas, sin comisión) le da a cada lado.
+    Un partido entra en <b>Recomendados</b> solo cuando el modelo encuentra valor real (las cuotas y el prediction market se contradicen) o cuando Opus lo analizó y lo aprobó.<br>
     Análisis con fines educativos / entretenimiento. Apostar implica riesgo de pérdida total.
   </div>
 </div>
 
 <script>
-let SPORT = "mlb";
-const DATE = new Date().toISOString().slice(0,10);
-const fmtOdd = o => o==null ? "—" : (typeof o==="number" ? (o>0?"+"+o:""+o) : o);
-const pct = p => p==null ? "—" : Math.round(p*100)+"%";
+let SPORT="mlb";
+const _d=new Date();
+const DATE=`${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
+const fmtOdd=o=>o==null?"—":(typeof o==="number"?(o>0?"+"+o:""+o):o);
+function fmtWhen(iso){ if(!iso)return""; const d=new Date(iso);
+  return d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"})+" · "+d.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}); }
 
-function fmtWhen(iso){
-  if(!iso) return "";
-  const d = new Date(iso.replace("Z","Z"));
-  const day = d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
-  const hr = d.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-  return `${day} · ${hr}`;
+function favorite(g){
+  const o=[["home",g.fair_home,g.home,g.odds_home,g.odds_home_book],
+           ["away",g.fair_away,g.away,g.odds_away,g.odds_away_book]];
+  if(g.fair_draw!=null) o.push(["draw",g.fair_draw,"Empate",g.odds_draw,null]);
+  o.sort((a,b)=>(b[1]||0)-(a[1]||0));
+  return o[0];
 }
 
 async function loadTabs(){
-  const sp = await (await fetch("/api/sports")).json();
-  document.getElementById("tabs").innerHTML = sp.map(s=>
-    `<div class="tab ${s.key===SPORT?'on':''}" data-k="${s.key}">${s.label}</div>`).join("");
+  const sp=await(await fetch("/api/sports")).json();
+  tabs.innerHTML=sp.map(s=>`<div class="tab ${s.key===SPORT?'on':''}" data-k="${s.key}">${s.label}</div>`).join("");
   document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
     SPORT=t.dataset.k;
     document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.dataset.k===SPORT));
-    loadSlate();
+    load();
   });
 }
 
-function teamRow(name, abbr, fair, odd, book, fav){
-  return `<div class="row ${fav?'fav':''}">
-    <div class="ab">${abbr||name.slice(0,3).toUpperCase()}</div>
-    <div class="tinfo">
-      <div class="tname">${name}</div>
-      <div class="bar"><i style="width:${fair?Math.round(fair*100):0}%"></i></div>
-    </div>
-    <div class="odd"><b>${fmtOdd(odd)}</b><small>${book||""}</small></div>
-    <div class="conf">${pct(fair)}</div>
+function gameRow(g){
+  const live = g.status && g.status!=="not_started";
+  const pregame = !live;
+  const fav = pregame ? favorite(g) : null;
+  const showPlayers = (SPORT==="mlb"||SPORT==="nba");
+  let read = "";
+  if(pregame && fav && fav[1]!=null){
+    read = `<div class="read"><span class="fav">${fav[2]}</span><span class="pct">${Math.round(fav[1]*100)}%</span>
+            <span class="od">mejor <b>${fmtOdd(fav[3])}</b></span></div>`;
+    if(g.fair_draw!=null){
+      const others = [["Empate",g.fair_draw],[g.home,g.fair_home],[g.away,g.fair_away]].filter(x=>x[0]!==fav[2]);
+      read += `<div class="draw">${others.map(x=>x[0]+" "+Math.round(x[1]*100)+"%").join(" · ")}</div>`;
+    }
+  } else if(live){
+    read = `<div class="read"><span style="color:var(--red);font-weight:700">EN JUEGO</span></div>`;
+  } else {
+    read = `<div class="read"><span class="od">sin cuotas disponibles</span></div>`;
+  }
+  return `<div class="game ${live?'live':''}">
+    <div class="grow"><span>${fmtWhen(g.start_time)}</span>${live?'<span class="live-b">● live</span>':''}
+       ${g.league?`<span class="lg">${g.league}</span>`:''}</div>
+    <div class="match">${g.away} <span style="color:var(--dim)">@</span> ${g.home}</div>
+    ${read}
+    ${(pregame&&showPlayers)?`<div class="more" data-ev="${g.event_id}" data-h="${g.home}" data-a="${g.away}">▾ ver jugadores</div>
+       <div class="pbox" id="pb-${g.event_id}"></div>`:''}
   </div>`;
 }
 
-function card(g){
-  const live = g.status && g.status!=="not_started" && !/final/i.test(g.status);
-  const badge = g.is_candidate ? `<span class="badge b-edge">▲ EDGE ${Math.round(g.edge*100)}%</span>`
-              : live ? `<span class="badge b-live">EN JUEGO</span>`
-              : `<span class="badge b-pass">PASAR</span>`;
-  const homeFav = (g.fair_home||0) >= (g.fair_away||0);
-  return `<div class="card ${g.is_candidate?'edge':''}" id="c-${g.event_id}">
-    <div class="chead"><span class="when">${fmtWhen(g.start_time)}</span> ${badge}</div>
-    <div class="teams">
-      ${teamRow(g.away, g.away_abbr, g.fair_away, g.odds_away, g.odds_away_book, !homeFav)}
-      ${teamRow(g.home, g.home_abbr, g.fair_home, g.odds_home, g.odds_home_book, homeFav)}
-    </div>
-    <div class="toggle">
-      <div class="on" data-v="equipos">Equipos</div>
-      <div data-v="jugadores">Jugadores</div>
-    </div>
-    <div class="players" id="p-${g.event_id}" style="display:none"></div>
-  </div>`;
-}
-
-async function showPlayers(g, box){
-  box.innerHTML = `<div class="pstat">cargando jugadores…</div>`;
-  const q = new URLSearchParams({sport:SPORT, home:g.home, away:g.away, event_id:g.event_id, date:DATE});
-  const d = await (await fetch("/api/players?"+q)).json();
-  let html = "";
-  if(d.type==="mlb"){
-    const s=d.starters;
-    if(s){
-      html += `<div class="pteam">Abridores</div>
-        <div class="pl"><span class="nm">${g.away}</span><span class="pstat">${s.away[0]||'?'} · ERA ${s.away[1]||'-'}</span></div>
-        <div class="pl"><span class="nm">${g.home}</span><span class="pstat">${s.home[0]||'?'} · ERA ${s.home[1]||'-'}</span></div>`;
-    } else html += `<div class="pstat">Abridores no publicados aún.</div>`;
-    if(d.lineup) html += `<div class="pteam">Lineup de bateo publicado ✓</div>`;
+async function showPlayers(ev,home,away,box){
+  box.style.display="block"; box.innerHTML=`<span class="s">cargando…</span>`;
+  const q=new URLSearchParams({sport:SPORT,home,away,event_id:ev,date:DATE});
+  const d=await(await fetch("/api/players?"+q)).json();
+  let h="";
+  if(d.type==="mlb"&&d.starters){
+    h+=`<div class="pteam">Abridores</div>
+      <div class="pl"><span class="nm">${away}</span><span class="s">${d.starters.away[0]||'?'} · ERA ${d.starters.away[1]||'-'}</span></div>
+      <div class="pl"><span class="nm">${home}</span><span class="s">${d.starters.home[0]||'?'} · ERA ${d.starters.home[1]||'-'}</span></div>`;
   } else if(d.type==="nba"){
     const inj=d.injuries||{};
-    for(const team in inj){
-      html += `<div class="pteam">${team}</div>`;
-      if(inj[team].length) inj[team].forEach(i=>{
-        const cls = /out/i.test(i.status)?'st-out':/day/i.test(i.status)?'st-dtd':'';
-        html += `<div class="pl"><span class="nm">${i.name}</span><span class="pstat ${cls}">${i.status||''}</span></div>`;
-      }); else html += `<div class="pl"><span class="pstat">sin bajas reportadas</span></div>`;
-    }
-  } else if(d.type==="soccer"){
-    const lu=d.lineups||{};
-    for(const team in lu){
-      html += `<div class="pteam">${team} ${lu[team].formation?'· '+lu[team].formation:''}</div>`;
-      (lu[team].starting||[]).slice(0,11).forEach(n=> html += `<div class="pl"><span class="nm">${n}</span></div>`);
-    }
-    if(!Object.keys(lu).length) html += `<div class="pstat">XI no publicado aún (se publica ~1h antes).</div>`;
-  } else html += `<div class="pstat">Sin datos de jugadores para este deporte.</div>`;
-
-  html += `<div class="note"><b>Props de jugadores en construcción.</b> Hoy se muestra disponibilidad y forma reales; los logros individuales con % de acierto (hit-rate) llegan cuando el modelo incorpore props.</div>`;
-  box.innerHTML = html;
+    for(const t in inj){ h+=`<div class="pteam">${t}</div>`;
+      if(inj[t].length) inj[t].forEach(i=>{const c=/out/i.test(i.status)?'st-out':/day/i.test(i.status)?'st-dtd':'';
+        h+=`<div class="pl"><span class="nm">${i.name}</span><span class="s ${c}">${i.status||''}</span></div>`;});
+      else h+=`<div class="pl"><span class="s">sin bajas</span></div>`; }
+  } else h+=`<span class="s">sin datos de jugadores</span>`;
+  h+=`<div class="pnote">Props de jugadores con % de acierto: en construcción.</div>`;
+  box.innerHTML=h;
 }
 
-async function loadSlate(){
-  const grid=document.getElementById("grid");
-  grid.innerHTML=`<div class="loading">cargando partidos…</div>`;
-  const r = await (await fetch(`/api/slate?sport=${SPORT}&date=${DATE}`)).json();
-  const games = r.games||[];
-  const cand = games.filter(g=>g.is_candidate).length;
+function recCard(r,fromOpus){
+  const conf = r.model_prob!=null?Math.round(r.model_prob*100)+"%":"—";
+  const mkt = r.market_prob!=null?Math.round(r.market_prob*100)+"%":"—";
+  const edge = r.edge!=null?(r.edge>0?"+":"")+Math.round(r.edge*100)+"%":"—";
+  return `<div class="rec">
+    <div class="tag">${fromOpus?'✓ RECOMENDADO POR OPUS':'▲ OPORTUNIDAD DETECTADA'}</div>
+    <div class="mt">${r.match||""}</div>
+    <div class="play">Jugar: ${r.selection||r.play}</div>
+    <div class="grid2">
+      <div class="kv"><span>Confianza modelo</span><b>${conf}</b></div>
+      <div class="kv"><span>Mercado</span><b>${mkt}</b></div>
+      <div class="kv"><span>Valor (edge)</span><b style="color:var(--accent)">${edge}</b></div>
+      <div class="kv"><span>Mejor cuota</span><b>${fmtOdd(r.book_odds)}</b><span>${r.book||""}</span></div>
+    </div>
+    ${r.reason?`<div class="why"><b style="color:var(--txt)">Por qué:</b> ${r.reason}</div>`:''}
+  </div>`;
+}
+
+async function load(){
+  document.getElementById("left").innerHTML=`<div class="loading">cargando…</div>`;
+  document.getElementById("right").innerHTML="";
+  const [slate,recsR] = await Promise.all([
+    fetch(`/api/slate?sport=${SPORT}&date=${DATE}`).then(r=>r.json()),
+    fetch(`/api/recommendations?date=${DATE}`).then(r=>r.json())
+  ]);
+  const games = slate.games||[];
+  const pregame = games.filter(g=>g.status==="not_started");
+  // panel izquierdo: pregame primero, live después
+  games.sort((a,b)=>(a.status==="not_started"?0:1)-(b.status==="not_started"?0:1));
+  document.getElementById("left").innerHTML = games.length?games.map(gameRow).join(""):`<div class="empty"><div class="big">🌙</div>No hay partidos de ${SPORT.toUpperCase()} hoy.</div>`;
+  document.getElementById("ngames").textContent = games.length?games.length:"";
+
+  // panel derecho: recomendaciones de Opus + oportunidades del scanner
+  const opus = (recsR.recommendations||[]).filter(r=>!r.sport || r.sport===SPORT || SPORT==="mlb");
+  const cand = games.filter(g=>g.is_candidate).map(g=>{
+    const f=favorite(g);
+    return {match:`${g.away} @ ${g.home}`, selection:f[2], model_prob:g.fair_home!=null?Math.max(g.fair_home,g.fair_away):null,
+            market_prob:g.pm_home, edge:g.edge, book_odds:f[3], book:f[4]};
+  });
+  const allrec = opus.map(r=>recCard(r,true)).concat(cand.map(c=>recCard(c,false)));
+  document.getElementById("nrec").textContent = allrec.length||"";
+  document.getElementById("right").innerHTML = allrec.length?allrec.join("") :
+    `<div class="empty"><div class="big">☑️</div><b>Sin oportunidades hoy.</b><br>
+      El mercado está parejo en todos los partidos. El modelo recomienda <b>no jugar</b> (PASAR).<br>
+      <span style="font-size:11.5px">No apostar cuando no hay valor también es ganar.</span></div>`;
+
+  // sub
   document.getElementById("substat").innerHTML =
-    `<b>${games.length}</b> partidos hoy · <b>${cand}</b> con edge detectado · ${r.date}`;
-  if(!games.length){
-    grid.innerHTML=`<div class="empty"><div class="big">🌙</div>No hay partidos de ${SPORT.toUpperCase()} hoy.</div>`;
-    return;
-  }
-  // candidatos primero
-  games.sort((a,b)=>(b.edge||0)-(a.edge||0));
-  grid.innerHTML = games.map(card).join("");
-  games.forEach(g=>{
-    const c=document.getElementById("c-"+g.event_id);
-    const box=document.getElementById("p-"+g.event_id);
-    const tgs=c.querySelectorAll(".toggle div");
-    tgs.forEach(t=>t.onclick=()=>{
-      tgs.forEach(x=>x.classList.toggle("on",x===t));
-      if(t.dataset.v==="jugadores"){ box.style.display="block"; if(!box.dataset.loaded){box.dataset.loaded=1; showPlayers(g,box);} }
-      else box.style.display="none";
-    });
+    `<b>${games.length}</b> partidos · <b>${pregame.length}</b> por jugarse · <b>${allrec.length}</b> oportunidad(es) · ${slate.date}`;
+
+  // wire "ver jugadores"
+  document.querySelectorAll(".more").forEach(m=>m.onclick=()=>{
+    const box=document.getElementById("pb-"+m.dataset.ev);
+    if(box.style.display==="block"){box.style.display="none";return;}
+    if(box.dataset.l){box.style.display="block";return;}
+    box.dataset.l=1; showPlayers(m.dataset.ev,m.dataset.h,m.dataset.a,box);
   });
 }
 
-loadTabs().then(loadSlate);
-setInterval(loadSlate, 60000);
+loadTabs().then(load);
+setInterval(load,60000);
 </script>
 </body>
 </html>

@@ -22,9 +22,8 @@ from sports_skills import markets
 app = FastAPI()
 WEB = os.path.dirname(os.path.abspath(__file__))
 
-# deportes con cartelera+odds end-to-end hoy (ESPN schedule + The Odds API).
-# Fútbol usa otra fuente de schedule (football-data) y claves de odds por liga -> pendiente.
-SPORTS = [{"key": "mlb", "label": "MLB"}, {"key": "nba", "label": "NBA"}]
+SPORTS = [{"key": "mlb", "label": "MLB"}, {"key": "nba", "label": "NBA"},
+          {"key": "soccer", "label": "Fútbol"}]
 
 
 @app.get("/")
@@ -41,6 +40,15 @@ def sports():
 def slate(sport: str = "mlb", date: str = None):
     """Partidos del día con análisis de EQUIPOS (ganador): confianza, cuota, edge."""
     date = date or datetime.date.today().isoformat()
+
+    if sport == "soccer":   # 3 vías, otra fuente -> módulo aparte
+        import soccer_odds
+        games = soccer_odds.fetch_soccer_slate(date)
+        for g in games:
+            g["edge"] = None
+            g["is_candidate"] = False   # fútbol no tiene ancla cross-source todavía
+        return {"sport": sport, "date": date, "games": games}
+
     try:
         games = markets.get_todays_markets(sport=sport, date=date).get("data", {}).get("games", [])
     except Exception:
@@ -76,6 +84,35 @@ def slate(sport: str = "mlb", date: str = None):
                 })
         out.append(rec)
     return {"sport": sport, "date": date, "games": out}
+
+
+@app.get("/api/recommendations")
+def recommendations(date: str = None):
+    """Jugadas que Opus recomendó (predictions/ con action=APOSTAR) para la fecha."""
+    import json
+    date = date or datetime.date.today().isoformat()
+    path = os.path.join(ROOT, "predictions", f"{date}.jsonl")
+    recs = []
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8-sig"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                p = json.loads(line)
+            except Exception:
+                continue
+            if p.get("action") != "APOSTAR":
+                continue
+            recs.append({
+                "match": p.get("match"), "selection": p.get("selection"),
+                "sport": p.get("sport"), "bet_type": p.get("bet_type"),
+                "model_prob": p.get("model_prob"), "market_prob": p.get("market_prob"),
+                "edge": p.get("edge"), "book_odds": p.get("book_odds_american") or p.get("book_odds"),
+                "book": p.get("book"), "stake_pct": p.get("stake_pct"),
+                "confidence": p.get("confidence"), "reason": p.get("reasoning_summary"),
+            })
+    return {"date": date, "recommendations": recs}
 
 
 @app.get("/api/players")
