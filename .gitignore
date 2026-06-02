@@ -14,6 +14,9 @@ data/cache/
 # candidatos: salida transitoria del scanner (se regeneran)
 candidates/
 
+# capturas de referencia
+*.png
+
 # predictions/evaluations son source of truth — SE COMITEAN
 # (la auditabilidad histórica importa más que la privacidad de tus picks)
 # Si querés excluir picks personales, mover a un repo aparte.

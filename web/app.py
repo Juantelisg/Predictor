@@ -115,6 +115,28 @@ def recommendations(date: str = None):
     return {"date": date, "recommendations": recs}
 
 
+@app.get("/api/props")
+def props(date: str = None, home: str = None, away: str = None, sport: str = "mlb",
+          min_rate: float = 0.7, last_n: int = 10):
+    """Picks de jugadores (por hit-rate) de un partido. MLB por ahora."""
+    date = date or datetime.date.today().isoformat()
+    if sport != "mlb" or not home or not away:
+        return {"date": date, "picks": [], "note": "Props de jugadores: solo MLB por ahora."}
+    import player_props
+    picks = player_props.top_picks(date, away, home, min_rate=float(min_rate), last_n=int(last_n))
+    return {"date": date, "match": f"{away} @ {home}", "picks": picks}
+
+
+@app.get("/api/gamelog")
+def gamelog(player_id: int, statkey: str, label: str, line: float, side: str,
+            season: int = None, date: str = None):
+    """Tabla de últimos partidos del jugador para un prop, marcando si pegó."""
+    import player_props
+    season = season or (int(date[:4]) if date else datetime.date.today().year)
+    rows = player_props.gamelog_table(player_id, season, statkey, label, float(line), side, before=date)
+    return {"rows": rows}
+
+
 @app.get("/api/players")
 def players(sport: str, home: str = None, away: str = None, event_id: str = None, date: str = None):
     """Disponibilidad de JUGADORES de un partido (abridores/lesionados/XI). Props: pendiente."""
