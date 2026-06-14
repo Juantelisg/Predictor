@@ -14,7 +14,7 @@ import sys, os, datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)   # para importar scan / availability del directorio padre
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 import scan, availability
 from sports_skills import markets
@@ -147,6 +147,22 @@ def gamelog(player_id: int, label: str, line: float, side: str, season: int = No
     season = season or (int(date[:4]) if date else datetime.date.today().year)
     return player_props.gamelog_table(player_id, season, label, float(line), side,
                                       before=date, mode=mode, opp=opp)
+
+
+@app.post("/api/analyze")
+async def analyze_ep(req: Request):
+    """Analiza props CARGADOS por el usuario (manual/excel/foto). Body: {props:[...], date}.
+    Cada prop: {jugador, mercado, linea, lado, cuota}. La cuota la pone el usuario (su casa)."""
+    body = await req.json()
+    date = body.get("date") or datetime.date.today().isoformat()
+    import analyze
+    try:
+        return {"date": date, "results": analyze.analyze(body.get("props", []), date)}
+    except Exception as e:
+        msg = str(e)
+        if any(s in msg for s in ("10054", "Connection", "aborted", "timed out", "Max retries")):
+            msg = "MLB Stats no responde ahora mismo (rate-limit temporal de la fuente). Reintentá en unos minutos; una vez que cargue queda cacheado."
+        return {"date": date, "results": [], "error": msg}
 
 
 @app.get("/api/players")

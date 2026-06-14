@@ -41,6 +41,8 @@ MIN_AB_L10 = 2.8        # piso de ABs/juego (L10): debajo = rol part-time -> exc
 MIN_GAMES = 15          # muestra minima de temporada para confiar en el rate
 MIN_BOOKS = 2           # casas minimas que ofrecen el prop (liquidez): 1 sola = linea soft no confiable
 MAX_EDGE = 0.15         # edge > 15% en props liquidos no es value, es bug (linea mala/match malo) -> descartar
+PITCHER_BETA = 0.5      # ajuste por pitcher rival en logit (validado en backtest: Brier 0.18398->0.18263)
+LG_WHIP = 1.31          # WHIP mediano de liga (blanco del ajuste); SP mejor que esto baja p_over ofensivo
 
 # mis etiquetas de player_props.PROPS  <->  market keys de The Odds API (MLB)
 MARKET_MAP = {
@@ -121,10 +123,13 @@ def _baselines(date, season):
     return {(p.rsplit("|", 1)[0], float(p.rsplit("|", 1)[1])): v for p, v in raw.items()}
 
 
-def _model_prob(rows, label, line, side, mu):
-    """P(side) calibrada: tasa del jugador (muestra previa en `rows`) regresada a la media mu (K=POP_K)."""
+def _model_prob(rows, label, line, side, mu, whip=None):
+    """P(side) calibrada: tasa del jugador regresada a la media mu (K=POP_K), ajustada por el WHIP
+    del pitcher rival (solo props ofensivos; Ponches va al reves -> sin ajustar por ahora)."""
     overs = sum(1 for r in rows if pp._value(r, label) > line)
     p_over = (overs + POP_K * mu) / (len(rows) + POP_K)
+    if whip is not None and label != "Ponches":
+        p_over = bt._sig(bt._logit(p_over) + PITCHER_BETA * (whip - LG_WHIP))
     return (p_over if side == "Over" else 1 - p_over), overs / len(rows)
 
 
@@ -134,6 +139,20 @@ def _confirmed_starters(date, away_name, home_name):
     if not g:
         return None
     return {_norm(n) for n in (g.get("home", []) + g.get("away", [])) if n}
+
+
+def _game_whips(date, away_name, home_name):
+    """{team_name: WHIP del SP probable de ese equipo}. El bateador enfrenta al SP de su rival."""
+    try:
+        r = requests.get(f"{pp.B}/schedule", params={"sportId": 1, "date": date, "hydrate": "probablePitcher"}, timeout=15).json()
+    except Exception:
+        return {}
+    for g in (r.get("dates") or [{}])[0].get("games", []):
+        h, a = g["teams"]["home"], g["teams"]["away"]
+        if h["team"]["name"] == home_name and a["team"]["name"] == away_name:
+            return {s["team"]["name"]: (bt._whip(sp) if (sp := (s.get("probablePitcher") or {}).get("id")) else None)
+                    for s in (h, a)}
+    return {}
 
 
 def verdict_for_game(date, away_name, home_name, sport="mlb", min_rate=0.7, last_n=10):
@@ -148,6 +167,7 @@ def verdict_for_game(date, away_name, home_name, sport="mlb", min_rate=0.7, last
     props, rem = fetch_props(sport_key, event_id, {c["label"] for c in cands})
     baselines = _baselines(date, season)
     starters = _confirmed_starters(date, away_name, home_name)   # None si el lineup no esta publicado
+    whips = _game_whips(date, away_name, home_name)              # {team: WHIP del SP probable}
     drop = {"no_lineup": set(), "part_time": set(), "sin_cuota": 0, "odds_rara": 0}
 
     results = []
@@ -170,7 +190,7 @@ def verdict_for_game(date, away_name, home_name, sport="mlb", min_rate=0.7, last
         if not (0.02 < fair < 0.98):     # backstop: devig degenerado -> no confiable
             drop["odds_rara"] += 1; continue
         mu = baselines.get((c["label"], c["line"]), c["hit"] / c["n"])
-        model, over_rate = _model_prob(rows, c["label"], c["line"], c["side"], mu)
+        model, over_rate = _model_prob(rows, c["label"], c["line"], c["side"], mu, whips.get(c["opp"]))
         edge = model - fair
         if abs(edge) > MAX_EDGE:         # edge absurdo (cualquier lado) -> data mala, no value real
             drop["odds_rara"] += 1; continue
@@ -183,6 +203,7 @@ def verdict_for_game(date, away_name, home_name, sport="mlb", min_rate=0.7, last
                         "verdict": "APOSTAR" if tier != "pass" else "PASAR"})
     results.sort(key=lambda r: r["edge"], reverse=True)
     return {"event_id": event_id, "quota_remaining": rem, "lineup_confirmed": starters is not None,
+            "whips": whips,
             "dropped": {"no_lineup": len(drop["no_lineup"]), "part_time": len(drop["part_time"]),
                         "sin_cuota": drop["sin_cuota"], "odds_rara": drop["odds_rara"]}, "results": results}
 
@@ -205,6 +226,9 @@ if __name__ == "__main__":
     lc = "publicado" if out["lineup_confirmed"] else "no publicado aun (filtro = props del book + ABs)"
     print(f"  quota The Odds API restante: {out['quota_remaining']}")
     print(f"  lineup confirmado: {lc}")
+    w = out.get("whips") or {}
+    wl = " | ".join(f"{t.split()[-1]} SP WHIP {v:.2f}" for t, v in w.items() if v) or "sin probables"
+    print(f"  pitcher rival (ajuste b={PITCHER_BETA}): {wl}")
     print(f"  pool limpiado: -{d['no_lineup']} fuera del lineup | -{d['part_time']} part-time/muestra | "
           f"-{d['sin_cuota']} props sin cuota | -{d['odds_rara']} cuota degenerada\n")
     print(f"  {'JUGADOR':<20} {'PROP':<22} {'L10':>5} {'TEMP':>6} {'MODELO':>7} {'MERCADO':>8} {'EDGE':>7}  VEREDICTO")
