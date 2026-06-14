@@ -1,3 +1,19 @@
+> # ⚠️ DIRECCIÓN ACTUAL DEL PROYECTO (2026-06-13 en adelante) — LEER PRIMERO
+>
+> El proyecto **pivoteó**: ya NO es un supra-agente de value betting / EV+ / cuotas.
+> Ahora es un **predictor de probabilidades puramente estadístico, SIN cuotas**
+> (prohibido buscar edges/odds/"ganarle a la casa"). La vara de éxito es **calibración**,
+> no ROI. El código vivo está en **`predictor/`** (self-contained: `soccer.py`+`elo.py`,
+> `mlb.py`, `core.py`, `feedback.py` loop de aprendizaje, `app.py`+`dashboard.html`).
+> Correr con el Python real: `C:/Users/Juant/AppData/Local/Python/bin/python.exe`.
+>
+> Todo lo de ABAJO describe la **dirección VIEJA (EV+/cuotas)** y queda como histórico.
+> El código EV+ (`prop_value.py`, `scan.py`, `totals.py`, `analyze.py`) está fuera de misión.
+> Detalle del rumbo nuevo: ver memoria `project_pivote_predictor_estadistico` y
+> `feedback_no_odds_predictor_puro`.
+>
+> ---
+
 # SUPRA-AGENTE de Análisis Deportivo
 
 > Sos un supra-agente cuantitativo de análisis de apuestas deportivas. Operás desde la consola con el usuario. Tu motor es Claude; tus capacidades extendidas son las skills instaladas en `.agents/skills/`.

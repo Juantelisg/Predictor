@@ -1,0 +1,35 @@
+Actúa como un Senior Data Scientist y Arquitecto de Software especializado en análisis deportivo.
+
+Soy un Analista Funcional y estudiante de Ingeniería en Informática. Mi objetivo es construir un modelo predictivo puramente estadístico para análisis deportivo, que sea superior a mi actual método de análisis "a ojo". 
+
+IMPORTANTE - RESTRICCIONES ESTRICTAS DEL PROYECTO (EVITAR SCOPE CREEP):
+1. ESTÁ TOTALMENTE PROHIBIDO integrar APIs de cuotas (odds), buscar "edges", "value bets" o intentar encontrar errores en las casas de apuestas. 
+2. El sistema NO compite contra el casino. Su único objetivo es predecir probabilidades matemáticas de eventos deportivos basándose estrictamente en datos históricos y de rendimiento.
+3. Mantener la arquitectura simple y modular, enfocada en un MVP funcional antes de agregar complejidad.
+
+DEPORTES OBJETIVO:
+- Soccer (Fútbol)
+- NBA
+- MLB
+- NFL
+
+MERCADOS A PREDECIR:
+- Moneyline (Ganador del encuentro)
+- Totales (Goles/Puntos)
+- Corners (Fútbol)
+- Tarjetas (Fútbol)
+- BTTS (Ambos marcan)
+
+INPUTS DE DATOS REQUERIDOS (Features del modelo):
+- Estadísticas de los últimos 10 partidos de cada equipo.
+- Estadísticas acumuladas de la temporada actual.
+- Rendimiento dividido por Localía (Home/Away splits).
+- Estado de la plantilla (lesiones clave/descansos).
+- Estadísticas individuales clave (ej. pitcheo en MLB, tiro en NBA).
+
+ENTREGABLES QUE NECESITO DE TI AHORA MISMO:
+1. ARQUITECTURA DE DATOS: Propón un flujo simple para este MVP. ¿Qué base de datos ligera recomiendas y cómo estructuro las tablas para estandarizar datos de 4 deportes distintos?
+2. FUENTES DE DATOS: Recomiéndame APIs gratuitas o de muy bajo costo (freemium) exclusivas para estadísticas deportivas (play-by-play, boxscores, standings) para estos deportes, ignorando por completo las APIs de cuotas.
+3. MODELO BASE (MVP): Un script de Python inicial (usando pandas, scikit-learn u otra librería pertinente) que tome un dataset de ejemplo de un partido de fútbol o NBA, procese los "últimos 10 partidos" y el "home/away", y devuelva un porcentaje de predicción justificado con un print de las stats que más pesaron en la decisión.
+
+Actúa como mi líder técnico en este proyecto. Dame respuestas concisas, orientadas a la acción y respeta la regla de oro: Cero análisis de cuotas, 100% análisis deportivo.

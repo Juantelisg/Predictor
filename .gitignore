@@ -4,11 +4,13 @@ config/.env
 !.env.example
 *.key
 *.pem
+docs/keys.txt
 
 # cache
 data/odds/
 data/stats/
 data/cache/
+predictor/data/
 *.cache
 
 # candidatos: salida transitoria del scanner (se regeneran)
