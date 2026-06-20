@@ -1,0 +1,87 @@
+==============================================================================
+  ROADMAP.txt  -  Predictor estadistico (carpeta predictor/)
+  Para Claude: leer rapido desde cmd antes de tocar el predictor.
+  Ultima actualizacion: 2026-06-19
+==============================================================================
+
+REGLA DE ORO (no negociable): predictor de PROBABILIDADES, puro stats.
+  CERO cuotas / CERO edge / CERO "ganarle a la casa". La vara es CALIBRACION
+  (cuando dice 70%, pega 70%), no ROI. Linemate = contexto/hit-rate, NUNCA edge.
+
+DIAGNOSTICO (act. 2026-06-20): el LOOP ya NO es el cuello de botella -> se cerro.
+  Hoy: MLB cableado, recalibrador Platt activo, cuadro combinado con Linemate.
+  El nuevo cuello es el VOLUMEN y el OUT-OF-SAMPLE: la calibracion es in-sample y
+  soccer (228 evals); falta acumular MLB (n>0 desde esta noche) para validar de verdad.
+
+------------------------------------------------------------------------------
+HALLAZGO CLAVE (de tus propias evaluaciones: 96 evals, todas soccer)
+------------------------------------------------------------------------------
+  Brier 0.190 / log loss 0.56 global = sano. PERO deja CORTOS a los favoritos:
+       prob dicha    n     real
+         40-50%     11    72.7%
+         60-70%      8    87.5%
+         70-80%     17    82.4%
+  = subconfianza en favoritos (sesgo D del readme, ahora CONFIRMADO con datos).
+  Caveat honesto: 96 evals ~= 9-10 partidos (mercados correlacionados) -> la
+  direccion es clara, la magnitud no. El fix real pasa por VOLUMEN (paso 1) +
+  recalibracion (paso 2).
+
+------------------------------------------------------------------------------
+ROADMAP PRIORIZADO  (hacer en este orden; cada uno habilita al siguiente)
+------------------------------------------------------------------------------
+[1] CABLEAR MLB AL LOOP            *** HECHO (2026-06-20, sin commitear) ***
+    feedback.py: log_mlb() + _mlb_score() (statsapi) + evaluate() resuelve ml:home +
+    report() separa por deporte. predictions/2026-06-20.jsonl ya tiene 14 filas mlb.
+    FALTA SOLO: la 1a eval real (los partidos de hoy cierran de noche -> correr 'eval').
+
+[2] CERRAR EL LOOP: recalibracion (Platt)   *** HECHO (2026-06-20, sin commitear) ***
+    calib.py = Platt por model_version (a>1 estira favoritos), MIN_N=40, in-sample,
+    guarda data/calibrators.json. feedback.report muestra cruda vs calibrada
+    (0.2077 -> 0.2060 Brier). feedback.calibrate fitea. PENDIENTE v2: isotonica,
+    out-of-sample, y calibrar POR CONTEXTO (hoy es pooleado) cuando haya volumen.
+
+[3] INTEGRAR LINEMATE AL CUADRO DE ANALISIS   *** HECHO (2026-06-20, sin commitear) ***
+    analizar.py: 1 corrida junta modelo (1X2/totales/valla + corners/tarjetas StatsBomb)
+    + trends Linemate (validacion cruzada) + odds Linemate SOLO como contexto + recalibrador.
+    Verificado end-to-end (Sweden vs Netherlands). Hit-rate = contexto, nunca edge.
+    PULIR (cosmetico): los hit-rates salen como float crudo (L10=42.857...) -> formatear.
+
+[4] DISPONIBILIDAD / XI ESTRUCTURADA (selecciones)   MEDIO | bajo-medio
+    Por que: el modelo soccer es ciego al plantel 2026 / lesiones (lo dice
+             soccer.py linea 347). Hoy los XI salen a mano por WebSearch.
+    OJO (2026-06-20): Linemate /v3/teams/injuries devuelve VACIO para selecciones
+             ({"SWE":[],"NED":[]}) -> NO sirve para el Mundial (si para clubes/MLB/NBA).
+             Para selecciones, las bajas siguen viniendo de WebSearch. Replantear esta via.
+    Hecho:   el cuadro marca bajas/XI sin intervencion manual.
+
+[5] INCERTIDUMBRE EN LA SALIDA   MEDIO | medio
+    Por que: un 70% sacado de 2 partidos y uno de 200 hoy se reportan igual.
+             "ALTA si prob>=0.55" es umbral cosmetico, no refleja la muestra.
+    Donde:   salida del modelo + nivel de confianza. Prob +/- ancho segun n efectiva.
+    Hecho:   cada prob sale con intervalo y n comparable.
+
+[6] BACKLOG  (cuando 1-5 esten andando)
+    - xG como INPUT del 1X2 soccer (hoy solo chequeo lateral -> se desperdicia).
+    - MLB: FIP/xFIP/SIERA > ERA; sumar bullpen y park factors.
+    - NBA datos reales (nba_api) en vez del placeholder sintetico (mvp_nba.py).
+    - Persistir la SQLite (hoy :memory: en core.py).
+    - Calibracion POR CONTEXTO (favorito/neutral, fase, mercado), no 1 numero global.
+
+------------------------------------------------------------------------------
+RECORDATORIOS (no romper lo que ya esta bien)
+------------------------------------------------------------------------------
+  - Disciplina que SE MANTIENE: logging versionado por model_version, sin fuga
+    temporal, se evalua TODO (no solo lo jugado). No tocar esto.
+  - Markets ruidosos: totales/BTTS (Brier ~0.25-0.28) peor que 1X2/dc (~0.15).
+    El modelo SOBREESTIMA tarjetas -> humildad en Over de tarjetas.
+  - Mundial = cancha neutral, salvo USA anfitrion -> correr como LOCAL.
+  - Python real: C:/Users/Juant/AppData/Local/Python/bin/python.exe
+  - Si un fetch falla: decirlo y bajar confianza. No fabricar datos.
+
+==============================================================================
+  1 linea: el LOOP ya esta cerrado ([1][2][3] HECHOS, sin commitear, verificados 2026-06-20).
+  Proximo real: (a) commitear lo hecho; (b) correr 'eval' de noche -> 1a calib MLB;
+                (c) [5] intervalo de incertidumbre; (d) backlog [6] (xG input, FIP, ctx).
+                [4] via Linemate NO sirve para selecciones (injuries vacio).
+  Vara = calibracion, no ROI.
+==============================================================================

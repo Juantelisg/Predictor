@@ -34,7 +34,27 @@ ALIAS = {"brasil": "Brazil", "marruecos": "Morocco", "espana": "Spain", "francia
          "holanda": "Netherlands", "croacia": "Croatia", "mexico": "Mexico", "japon": "Japan",
          "corea del sur": "South Korea", "estados unidos": "United States", "belgica": "Belgium",
          "italia": "Italy", "portugal": "Portugal", "argentina": "Argentina", "uruguay": "Uruguay",
-         "colombia": "Colombia", "suiza": "Switzerland", "dinamarca": "Denmark", "canada": "Canada"}
+         "colombia": "Colombia", "suiza": "Switzerland", "dinamarca": "Denmark", "canada": "Canada",
+         "noruega": "Norway", "argelia": "Algeria", "irak": "Iraq", "austria": "Austria",
+         "jordania": "Jordan", "senegal": "Senegal"}
+
+
+def _form_L5(df, team, asof, n=5):
+    """Promedio de goles marcados/recibidos y vallas invictas en los ultimos n partidos."""
+    mask = ((df.home_team == team) | (df.away_team == team)) & (df.date < asof)
+    recent = df[mask].dropna(subset=["home_score", "away_score"]).sort_values("date").tail(n)
+    if recent.empty:
+        return None
+    gf = ga = cs = 0.0
+    for row in recent.itertuples():
+        if row.home_team == team:
+            gf += row.home_score; ga += row.away_score
+            cs += 1 if row.away_score == 0 else 0
+        else:
+            gf += row.away_score; ga += row.home_score
+            cs += 1 if row.home_score == 0 else 0
+    m = len(recent)
+    return {"gf": round(gf / m, 2), "ga": round(ga / m, 2), "cs": int(cs), "n": m}
 
 
 def load():
@@ -195,24 +215,32 @@ def _predict_with(models, rating, local, visita, neutral=True, rho=RHO, w=ELO_W)
     over = lambda t: float(sum(M[i, j] for i in range(M.shape[0]) for j in range(M.shape[1]) if i + j >= t))
     sc = np.unravel_index(np.argmax(M), M.shape)
     btts, o25, gap = float(M[1:, 1:].sum()), over(3), eh - ea
+    cs_home = float(M[:, 0].sum())   # P(away_goals=0) = local valla invicta
+    cs_away = float(M[0, :].sum())   # P(home_goals=0) = visita valla invicta
     fav_o = max(blend, key=blend.get)
     prob_top = blend[fav_o]
     ins = [
         f"Elo {round(eh)} vs {round(ea)} ({'+' if gap >= 0 else ''}{round(gap)} para {local if gap >= 0 else visita})",
         f"Goles esperados: {local} {lh:.2f} - {visita} {la:.2f} (mas probable {int(sc[0])}-{int(sc[1])})",
         f"{'Pocos goles' if o25 < 0.5 else 'Partido abierto'}: Over 2.5 {round(o25*100)}% / BTTS {round(btts*100)}%",
+        f"Valla invicta: {local} {round(cs_home*100)}% / {visita} {round(cs_away*100)}%",
     ]
     return dict(local=local, visita=visita, lh=lh, la=la, eh=eh, ea=ea, pois=pz, elo=ez, blend=blend,
-                over=o25, over15=over(2), over35=over(4), btts=btts, score=(int(sc[0]), int(sc[1])),
+                over=o25, over15=over(2), over35=over(4), btts=btts, cs_home=cs_home, cs_away=cs_away,
+                score=(int(sc[0]), int(sc[1])),
                 pick=(local if fav_o == 1 else visita if fav_o == -1 else "Empate"), prob_top=prob_top,
                 level="ALTA" if prob_top >= 0.55 else "MEDIA" if prob_top >= 0.42 else "BAJA",
                 market="1X2", insights=ins)
 
 
-def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W):
+def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_all=None):
     today = pd.Timestamp(datetime.date.today())
     models = _fit_models(df_elo, today + pd.Timedelta(days=1), today)[:4]
-    return _predict_with(models, rating, local, visita, neutral, rho, w)
+    r = _predict_with(models, rating, local, visita, neutral, rho, w)
+    if df_all is not None:
+        r["form_home"] = _form_L5(df_all, local, today)
+        r["form_away"] = _form_L5(df_all, visita, today)
+    return r
 
 
 def predict_fixtures(fixtures, neutral=True):
@@ -227,7 +255,10 @@ def predict_fixtures(fixtures, neutral=True):
     for fx in fixtures:
         L, V = resolve(fx[0], teams), resolve(fx[1], teams)
         if L and V:
-            out.append(_predict_with(models, rating, L, V, fx[2] if len(fx) > 2 else neutral))
+            res = _predict_with(models, rating, L, V, fx[2] if len(fx) > 2 else neutral)
+            res["form_home"] = _form_L5(df, L, today)
+            res["form_away"] = _form_L5(df, V, today)
+            out.append(res)
     return out
 
 
@@ -246,7 +277,16 @@ def main():
     tf = today - pd.DateOffset(years=2)
     vb = evaluate(df_elo, tf, tf, today, RHO, ELO_W)         # blend
     vp = evaluate(df_elo, tf, tf, today, RHO, 0.0)           # solo Poisson (para comparar)
-    r = predict(df_elo, rating, local, visita, neutral=True)
+    r = predict(df_elo, rating, local, visita, neutral=True, df_all=df)
+
+    # xG de StatsBomb (opcional — no falla si no hay datos)
+    try:
+        import statsbomb_data as sb_data
+        xg_h = sb_data.get(local)
+        xg_a = sb_data.get(visita)
+    except Exception:
+        xg_h = xg_a = None
+
     fair = lambda p: f"{1 / p:.2f}" if p > 0 else "-"
 
     print("=" * 66)
@@ -269,8 +309,35 @@ def main():
     print(f"    [componentes -> Elo {r['elo'][1]*100:.0f}/{r['elo'][0]*100:.0f}/{r['elo'][-1]*100:.0f}  "
           f"Poisson {r['pois'][1]*100:.0f}/{r['pois'][0]*100:.0f}/{r['pois'][-1]*100:.0f}]\n")
     print("  Goles (Poisson/Dixon-Coles):")
+    print(f"    Over 1.5 ........... {r['over15'] * 100:5.1f}%   (cuota justa {fair(r['over15'])})")
     print(f"    Over 2.5 ........... {r['over'] * 100:5.1f}%   (cuota justa {fair(r['over'])})")
+    print(f"    Over 3.5 ........... {r['over35'] * 100:5.1f}%   (cuota justa {fair(r['over35'])})")
     print(f"    BTTS (ambos marcan)  {r['btts'] * 100:5.1f}%   (cuota justa {fair(r['btts'])})\n")
+    print("  Valla invicta (clean sheet):")
+    print(f"    {local:<22} {r['cs_home'] * 100:5.1f}%   (cuota justa {fair(r['cs_home'])})")
+    print(f"    {visita:<22} {r['cs_away'] * 100:5.1f}%   (cuota justa {fair(r['cs_away'])})\n")
+    fh, fa = r.get("form_home"), r.get("form_away")
+    if fh or fa:
+        print("  Forma L5 (ultimos 5 partidos oficiales):")
+        if fh:
+            print(f"    {local:<22} {fh['gf']:.2f} gf / {fh['ga']:.2f} ga / {fh['cs']}/{fh['n']} vallas")
+        if fa:
+            print(f"    {visita:<22} {fa['gf']:.2f} gf / {fa['ga']:.2f} ga / {fa['cs']}/{fa['n']} vallas")
+        print()
+    if xg_h or xg_a:
+        print("  xG reciente (StatsBomb — WC/Euro/Copa/AFCON):")
+        if xg_h:
+            print(f"    {local:<22} xGf {xg_h['avg_xg_for']:.2f} / xGa {xg_h['avg_xg_against']:.2f}"
+                  f"  cf {xg_h['avg_corners_for']:.1f}")
+        if xg_a:
+            print(f"    {visita:<22} xGf {xg_a['avg_xg_for']:.2f} / xGa {xg_a['avg_xg_against']:.2f}"
+                  f"  cf {xg_a['avg_corners_for']:.1f}")
+        if xg_h and xg_a:
+            xg_total = xg_h["avg_xg_for"] + xg_a["avg_xg_for"]
+            print(f"    -> xG total esperado: {xg_total:.2f} "
+                  f"({'alineado' if abs(xg_total - (r['lh'] + r['la'])) < 0.4 else 'DIVERGE del Poisson'} "
+                  f"vs Poisson {r['lh']+r['la']:.2f})")
+        print()
     h2h = df[((df.home_team == local) & (df.away_team == visita)) |
              ((df.home_team == visita) & (df.away_team == local))].tail(3)
     if len(h2h):
