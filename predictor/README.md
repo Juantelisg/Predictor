@@ -20,14 +20,17 @@ $PY -m uvicorn app:app --port 8900 --app-dir predictor   # -> http://localhost:8
 
 # Análisis por consola
 $PY predictor/soccer.py "Brazil" "Morocco"   # un partido de selecciones (Mundial)
+$PY predictor/analizar.py "Belgium" "Iran" --lm=BEL,IRN   # cuadro combinado + Linemate + calibrado
 $PY predictor/mlb.py today                    # cartelera MLB de hoy (no jugados)
 $PY predictor/mlb.py 2025                      # backtest de una temporada
 $PY predictor/slate.py                         # partidos de hoy (fuentes gratis)
 
 # Loop de aprendizaje
-$PY predictor/feedback.py log "Brazil" "Morocco"   # registra predicciones
-$PY predictor/feedback.py eval                       # resuelve contra resultado real (ESPN)
-$PY predictor/feedback.py report                     # tabla de calibración
+$PY predictor/feedback.py log "Brazil" "Morocco"   # registra predicciones de selecciones
+$PY predictor/feedback.py log-mlb                    # registra el moneyline MLB de hoy
+$PY predictor/feedback.py eval                       # resuelve contra resultado real (ESPN/statsapi)
+$PY predictor/feedback.py report                     # tabla de calibración (Brier + log loss)
+$PY predictor/feedback.py calibrate                  # fitea el recalibrador (Platt) desde evaluations/
 
 # Presupuesto de la API escasa
 $PY predictor/budget.py
@@ -49,7 +52,11 @@ statsapi / CSV intl / ESPN  →  features → modelo → prob  →  dashboard + 
 |---|---|
 | `core.py` | Pipeline binario compartido (SQLite formato largo → features sin fuga → logística → validación). `form()`, `fit_model()`, `entrenar_y_evaluar()`. |
 | `schema.sql` | Esquema SQLite multi-deporte (núcleo + stats en formato largo). |
-| `soccer.py` + `elo.py` | **Selecciones**: Elo rodante + Poisson/Dixon-Coles. La supremacía la pone el Elo, el total el Poisson → 1X2 + totales + BTTS coherentes. |
+| `soccer.py` + `elo.py` | **Selecciones**: Elo rodante + Poisson/Dixon-Coles. La supremacía la pone el Elo, el total el Poisson → 1X2 + totales + BTTS coherentes. Modelo `soccer-v3`. Los modelos se fitean **una vez** (`fit_today`) y se reusan entre partidos. |
+| `analizar.py` | Cuadro de análisis combinado: junta el predictor (1X2/totales/valla + córners/tarjetas) con los trends de Linemate (validación cruzada) y aplica el recalibrador → prob cruda y calibrada. Lo consume el CLI y el dashboard. |
+| `statsbomb_data.py` | **Córners + tarjetas de selecciones** (perfiles StatsBomb). `predict_corners` / `predict_cards`. *Ojo: el modelo SOBREESTIMA tarjetas y córners en partidos desbalanceados* (confirmado en retro). |
+| `linemate.py` | Cliente de la API pública de Linemate: cartelera del Mundial + trends de jugador/equipo (hit-rates por split). Solo **contexto**, nunca edge. |
+| `calib.py` | Recalibrador (Platt) fiteado sobre `evaluations/` por `model_version`. Corrige la compresión de favoritos. Identidad si n < 40. |
 | `mlb.py` | **MLB moneyline**: forma de equipo + ERA rodante del abridor (sin fuga). Datos reales statsapi. |
 | `mvp_nba.py` | NBA POC con datos sintéticos (placeholder hasta cablear nba_api). |
 | `feedback.py` | Loop de aprendizaje: `log` → `eval` (resuelve vs ESPN, CSV de respaldo) → `report` (fiabilidad por bucket + Brier). |
@@ -68,18 +75,18 @@ statsapi / CSV intl / ESPN  →  features → modelo → prob  →  dashboard + 
 
 - **Soccer 1X2**: log loss test ~0.86 vs 1.05 baseline · acc ~60%. Compresión de favoritos resuelta con Elo. Totales/BTTS coherentes (descomposición supremacía/total).
 - **MLB moneyline**: 57% acc vs 53% baseline (2025) · log loss 0.68. El abridor es el feature dominante.
-- **Loop**: corrido con 20 evaluaciones reales (ESPN). Brier 0.20. **n chico = ruido → no se ajusta nada todavía** (hace falta volumen).
+- **Loop**: 272 evaluaciones reales acumuladas (ESPN), soccer + MLB. **Brier crudo ~0.213 / calibrado ~0.212**. 1X2 y doble oportunidad son los mercados mejor calibrados (Brier ~0.156); **córners y tarjetas los peores** (Brier ~0.33, sesgo al alza confirmado).
+- **Recalibrador (Platt)**: fiteado para `soccer-v3` (a≈1.01, b≈+0.21 → estira, corrige la compresión de favoritos). Córners/tarjetas/MLB quedan en identidad hasta tener n ≥ 40 por familia.
 
 ## Estado y próximos pasos (retomar acá)
 
-**Listo:** soccer selecciones, MLB moneyline, loop de aprendizaje, dashboard, infra de quota.
+**Listo:** soccer selecciones (`soccer-v3`), MLB moneyline + su loop, córners/tarjetas de selecciones (StatsBomb), integración Linemate (contexto), recalibrador Platt, dashboard Mundial (`/api/wc/today`), loop de aprendizaje (log → eval vs ESPN → report → calibrate), infra de quota.
 
 **Falta (orden recomendado):**
-1. **MLB → loop** — cablear resultados+logging de MLB al `feedback.py` (statsapi). 15 partidos/día = volumen rápido para calibrar. *(lo más alto)*
-2. **Decidir tier API-Football** — desbloquea córners/tarjetas/player-props (los mercados que el usuario realmente juega).
-3. **Totales de carreras MLB** — para que MLB tenga varios logros en el dashboard.
-4. **NBA datos reales** (nba_api) · **NFL** (nfl_data_py).
-5. **Corrección de calibración** (isotónica) — cuando haya volumen.
-6. Persistir la SQLite (hoy `:memory:`).
+1. **Recalibrar córners/tarjetas aparte** — el modelo los sobreestima sistemáticamente (Brier ~0.33). Bajarles confianza o fitear su propio recalibrador cuando haya n ≥ 40.
+2. **Totales de carreras MLB** — para que MLB tenga varios logros en el dashboard.
+3. **NBA datos reales** (nba_api) · **NFL** (nfl_data_py).
+4. **Corrección de calibración** (isotónica) — cuando haya volumen por familia de mercado.
+5. Persistir la SQLite (hoy `:memory:`).
 
-**Watch (no accionar aún):** los goles podrían tirar un poco altos (2 partidos low-scoring; sin confirmar).
+**Watch (no accionar aún):** córners y tarjetas tiran alto en partidos desbalanceados (confirmado en retro de selecciones); ya excluidos de los "picks confiables" en `analizar._picks`.

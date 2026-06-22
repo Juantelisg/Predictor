@@ -299,21 +299,27 @@ def report():
         print("  Sin evaluaciones todavia. Corre 'eval' despues de que se jueguen los partidos.")
         return
     cparams = calib.load()                         # recalibrador (vacio -> calibrada == cruda)
-    buckets, fam, sport_n = {}, {}, {}
+    buckets, buckets_c, fam, sport_n = {}, {}, {}, {}
     brier = ll = brier_c = ll_c = 0.0
     for e in ev:
         p, o = e["prob"], e["outcome"]
-        pc = calib.apply(p, e.get("model_version", "?"), cparams)   # prob calibrada
-        bi = min(int(p * 10), 9)
+        f = e["market"].split(":")[0]
+        pc = calib.apply(p, e.get("model_version", "?"), f, cparams)   # prob calibrada POR FAMILIA
+        bi, bic = min(int(p * 10), 9), min(int(pc * 10), 9)
         buckets.setdefault(bi, [0, 0.0, 0])
         buckets[bi][0] += 1; buckets[bi][1] += p; buckets[bi][2] += o
-        f = e["market"].split(":")[0]
-        fam.setdefault(f, [0, 0.0]); fam[f][0] += 1; fam[f][1] += (p - o) ** 2
+        buckets_c.setdefault(bic, [0, 0.0, 0])
+        buckets_c[bic][0] += 1; buckets_c[bic][1] += pc; buckets_c[bic][2] += o
+        fam.setdefault(f, [0, 0.0, 0.0, 0.0, 0.0])   # n, brier, brier_c, sum_p, sum_o
+        fam[f][0] += 1; fam[f][1] += (p - o) ** 2; fam[f][2] += (pc - o) ** 2
+        fam[f][3] += p; fam[f][4] += o
         sport_n[e.get("sport") or ("mlb" if f == "ml" else "soccer")] = sport_n.get(
             e.get("sport") or ("mlb" if f == "ml" else "soccer"), 0) + 1
         brier += (p - o) ** 2;   ll += -math.log(max(p if o else 1 - p, 1e-12))
         brier_c += (pc - o) ** 2; ll_c += -math.log(max(pc if o else 1 - pc, 1e-12))
     n = len(ev)
+    ece = sum(abs(b[1] - b[2]) for b in buckets.values()) / n     # |pred-real| ponderado = ECE
+    ece_c = sum(abs(b[1] - b[2]) for b in buckets_c.values()) / n
     print(f"  CALIBRACION  ({n} predicciones evaluadas | por deporte: "
           f"{', '.join(f'{k}={v}' for k, v in sorted(sport_n.items()))})\n")
     print(f"  {'prob dicha':>11} {'n':>5} {'pred':>7} {'real':>7}")
@@ -325,12 +331,14 @@ def report():
     print(f"\n  {'metrica':<12} {'cruda':>8} {'calibrada':>10}   (mas bajo = mejor)")
     print(f"  {'Brier':<12} {brier/n:>8.4f} {brier_c/n:>10.4f}")
     print(f"  {'Log loss':<12} {ll/n:>8.4f} {ll_c/n:>10.4f}")
+    print(f"  {'ECE':<12} {ece:>8.4f} {ece_c:>10.4f}")
     if not cal_on:
         print("  (recalibrador = identidad; corre 'calibrate' para fitearlo desde evaluations/)")
-    print("\n  Brier por mercado:")
+    print(f"\n  Por familia de mercado ({'gap = pred-real, + = sobreconfiado':<8}):")
+    print(f"    {'familia':<8} {'n':>4} {'Brier':>7} {'Brier_c':>8} {'gap':>7}")
     for f in sorted(fam):
-        c, b = fam[f]
-        print(f"    {f:<6} n={c:<5} Brier={b/c:.4f}")
+        c, b, bc, sp, so = fam[f]
+        print(f"    {f:<8} {c:>4} {b/c:>7.4f} {bc/c:>8.4f} {(sp-so)/c*100:>+6.1f}%")
 
 
 def calibrate():

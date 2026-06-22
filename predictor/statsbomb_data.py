@@ -144,7 +144,7 @@ def resolve(name, data):
     for k, v in keys_lower.items():
         if n in k or k in n:
             return v
-    m = difflib.get_close_matches(n, keys_lower.keys(), n=1, cutoff=0.6)
+    m = difflib.get_close_matches(n, keys_lower.keys(), n=1, cutoff=0.85)   # 0.6 daba falsos positivos (NZ->Switzerland, Jordan->Iran)
     return keys_lower[m[0]] if m else None
 
 

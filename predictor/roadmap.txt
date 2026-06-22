@@ -4,9 +4,12 @@
   Ultima actualizacion: 2026-06-19
 ==============================================================================
 
-REGLA DE ORO (no negociable): predictor de PROBABILIDADES, puro stats.
-  CERO cuotas / CERO edge / CERO "ganarle a la casa". La vara es CALIBRACION
-  (cuando dice 70%, pega 70%), no ROI. Linemate = contexto/hit-rate, NUNCA edge.
+RUMBO (2026-06-21): SUPRA-MODELO de decision de apuestas = 3 cerebros + loop:
+  (1) predice calibrado + confianza, (2) valora vs cuota de-vigeada (edge),
+  (3) decide cuanto (Kelly por tier). Exito = crecimiento de bankroll, drawdown control.
+  GUARDRAIL: calibracion es PREREQUISITO del edge (motor calibrado primero, o se
+  apuesta el propio error). Cuotas = insumo de VALOR, NUNCA feature del modelo.
+  >>> PLAN COMPLETO Y FASADO: predictor/PLAN.md (canonico). Esto es solo quick-ref. <<<
 
 DIAGNOSTICO (act. 2026-06-20): el LOOP ya NO es el cuello de botella -> se cerro.
   Hoy: MLB cableado, recalibrador Platt activo, cuadro combinado con Linemate.
@@ -79,9 +82,9 @@ RECORDATORIOS (no romper lo que ya esta bien)
   - Si un fetch falla: decirlo y bajar confianza. No fabricar datos.
 
 ==============================================================================
-  1 linea: el LOOP ya esta cerrado ([1][2][3] HECHOS, sin commitear, verificados 2026-06-20).
-  Proximo real: (a) commitear lo hecho; (b) correr 'eval' de noche -> 1a calib MLB;
-                (c) [5] intervalo de incertidumbre; (d) backlog [6] (xG input, FIP, ctx).
-                [4] via Linemate NO sirve para selecciones (injuries vacio).
-  Vara = calibracion, no ROI.
+  1 linea: el LOOP de calibracion esta cerrado. Empieza el SUPRA-MODELO (ver PLAN.md).
+  Los [1]-[6] de arriba eran la fase calibracion (HECHOS) -> ahora son Fase 0/cimiento.
+  Proximo real: FASE 1 del PLAN.md -> 1.1 recalibracion POR FAMILIA de mercado
+                (mata sobreconfianza de cornes/tarjetas = el nicho de edge).
+  Vara nueva = bankroll con drawdown controlado, sobre base calibrada (NO ROI a ciegas).
 ==============================================================================

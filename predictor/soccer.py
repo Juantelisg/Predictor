@@ -10,7 +10,7 @@ Datos: martj42/international_results (CSV, 1872-presente, incluye fixtures futur
 Correr:  C:/Users/Juant/AppData/Local/Python/bin/python.exe predictor/soccer.py [local] [visita]
          (default: Brazil Morocco, en cancha neutral)
 """
-import sys, io, math, datetime
+import sys, io, math, datetime, unicodedata
 import numpy as np
 import pandas as pd
 import requests
@@ -36,7 +36,7 @@ ALIAS = {"brasil": "Brazil", "marruecos": "Morocco", "espana": "Spain", "francia
          "italia": "Italy", "portugal": "Portugal", "argentina": "Argentina", "uruguay": "Uruguay",
          "colombia": "Colombia", "suiza": "Switzerland", "dinamarca": "Denmark", "canada": "Canada",
          "noruega": "Norway", "argelia": "Algeria", "irak": "Iraq", "austria": "Austria",
-         "jordania": "Jordan", "senegal": "Senegal"}
+         "jordania": "Jordan", "senegal": "Senegal", "ir iran": "Iran"}
 
 
 def _form_L5(df, team, asof, n=5):
@@ -64,6 +64,10 @@ def load():
     return df
 
 
+def _deaccent(s):
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
+
+
 def resolve(name, teams):
     n = name.strip().lower()
     if name in teams:
@@ -75,6 +79,10 @@ def resolve(name, teams):
             return t
     for t in teams:
         if n in t.lower():
+            return t
+    dn = _deaccent(n)                                  # ultimo recurso: ignorar acentos
+    for t in teams:                                    # (Curacao->Curaçao, etc.)
+        if _deaccent(t) == dn or dn in _deaccent(t):
             return t
     return None
 
@@ -233,9 +241,17 @@ def _predict_with(models, rating, local, visita, neutral=True, rho=RHO, w=ELO_W)
                 market="1X2", insights=ins)
 
 
-def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_all=None):
+def fit_today(df_elo):
+    """Ajusta los 4 modelos (Poisson, Elo-1X2, supremacia) para predecir partidos de hoy.
+    Caro (~0.3s en caliente). Computar UNA vez y reusar entre partidos (dashboard)."""
     today = pd.Timestamp(datetime.date.today())
-    models = _fit_models(df_elo, today + pd.Timedelta(days=1), today)[:4]
+    return _fit_models(df_elo, today + pd.Timedelta(days=1), today)[:4]
+
+
+def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_all=None, models=None):
+    today = pd.Timestamp(datetime.date.today())
+    if models is None:                       # fit on-demand; pasar models ya fiteados para no re-fitear
+        models = fit_today(df_elo)
     r = _predict_with(models, rating, local, visita, neutral, rho, w)
     if df_all is not None:
         r["form_home"] = _form_L5(df_all, local, today)

@@ -21,7 +21,9 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PARAMS_PATH = os.path.join(ROOT, "data", "calibrators.json")
 MIN_N = 40                 # minimo de evaluaciones para fitear (si no, identidad)
-CALIB_VERSION = "platt-v1"
+SHRINK_K = 100             # shrink del Platt hacia identidad: s=n/(n+K). Con n chico (in-sample)
+                           # no le creemos el estiramiento agresivo; con volumen, confiamos mas.
+CALIB_VERSION = "platt-v2"
 
 
 def _logit(p):
@@ -42,21 +44,30 @@ def fit_one(probs, outcomes):
     from sklearn.linear_model import LogisticRegression
     x = _logit(probs).reshape(-1, 1)
     m = LogisticRegression(C=1e6, solver="lbfgs").fit(x, outcomes)
-    return float(m.coef_[0][0]), float(m.intercept_[0]), len(probs)
+    a, b, n = float(m.coef_[0][0]), float(m.intercept_[0]), len(probs)
+    s = n / (n + SHRINK_K)                  # shrink hacia identidad (a=1,b=0): anti overfit in-sample
+    return 1 + s * (a - 1), s * b, n
+
+
+def _key(version, family):
+    """Clave del recalibrador: por (version, familia de mercado). family None -> solo version."""
+    return f"{version}|{family}" if family else version
 
 
 def fit(evals):
-    """Fitea un calibrador por model_version sobre la lista de evaluaciones."""
-    by_ver = {}
+    """Fitea un calibrador por (model_version, FAMILIA de mercado). Separar familias evita que
+    un mercado bien calibrado (1x2) y otro sesgado (over) se promedien en un solo Platt."""
+    by_key = {}
     for e in evals:
-        v = e.get("model_version", "?")
-        by_ver.setdefault(v, ([], []))
-        by_ver[v][0].append(e["prob"])
-        by_ver[v][1].append(e["outcome"])
+        fam = e["market"].split(":")[0]
+        k = _key(e.get("model_version", "?"), fam)
+        by_key.setdefault(k, ([], []))
+        by_key[k][0].append(e["prob"])
+        by_key[k][1].append(e["outcome"])
     params = {}
-    for ver, (p, o) in by_ver.items():
+    for k, (p, o) in by_key.items():
         a, b, n = fit_one(p, o)
-        params[ver] = {"a": a, "b": b, "n": n, "calib_version": CALIB_VERSION}
+        params[k] = {"a": a, "b": b, "n": n, "calib_version": CALIB_VERSION}
     return params
 
 
@@ -76,10 +87,11 @@ def load():
     return {}
 
 
-def apply(prob, version, params=None):
-    """Aplica el calibrador de `version` a una probabilidad (identidad si no hay)."""
+def apply(prob, version, family=None, params=None):
+    """Aplica el calibrador de (version, familia) a una probabilidad (identidad si no hay).
+    Si no existe el de la familia, cae al de la version sola (retrocompatible)."""
     params = params if params is not None else load()
-    pr = params.get(version)
+    pr = params.get(_key(version, family)) or params.get(version)
     if not pr or (pr["a"] == 1.0 and pr["b"] == 0.0):
         return float(prob)
     return float(_sigmoid(pr["a"] * _logit(prob) + pr["b"]))

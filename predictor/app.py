@@ -9,17 +9,53 @@ Levantar:
   C:/Users/Juant/AppData/Local/Python/bin/python.exe -m uvicorn app:app --port 8900 --app-dir predictor
   -> http://localhost:8900
 """
-import os, sys, datetime
+import os, sys, datetime, json
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-import mlb, soccer, slate, budget, cache
+import mlb, soccer, slate, budget, cache, analizar, linemate
 
 app = FastAPI(title="Predictor")
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
 TTL = 600                                  # cache de resultados 10 min -> tabs instantaneos
+LECT_DIR = os.path.join(ROOT, "data", "lecturas")   # lecturas (contexto en vivo) precomputadas
+
+# codigo FIFA -> ISO2 para la bandera (flagcdn). Selecciones del Mundial 2026.
+FIFA_ISO2 = {
+    "NED": "nl", "SWE": "se", "GER": "de", "CIV": "ci", "CUW": "cw", "ECU": "ec", "JPN": "jp",
+    "TUN": "tn", "KSA": "sa", "ESP": "es", "IRN": "ir", "BEL": "be", "CPV": "cv", "URU": "uy",
+    "ARG": "ar", "BRA": "br", "FRA": "fr", "ENG": "gb-eng", "POR": "pt", "CRO": "hr", "USA": "us",
+    "MEX": "mx", "CAN": "ca", "COL": "co", "ITA": "it", "SUI": "ch", "DEN": "dk", "POL": "pl",
+    "SEN": "sn", "MAR": "ma", "NGA": "ng", "GHA": "gh", "KOR": "kr", "AUS": "au", "QAT": "qa",
+    "SRB": "rs", "WAL": "gb-wls", "SCO": "gb-sct", "AUT": "at", "NOR": "no", "ALG": "dz",
+    "IRQ": "iq", "JOR": "jo", "PAR": "py", "PER": "pe", "CHI": "cl", "CRC": "cr", "PAN": "pa",
+    "HON": "hn", "EGY": "eg", "CMR": "cm", "RSA": "za", "UZB": "uz", "NZL": "nz", "HAI": "ht",
+}
+
+
+def _flag(code):
+    iso = FIFA_ISO2.get((code or "").upper())
+    return f"https://flagcdn.com/w160/{iso}.png" if iso else None
+
+
+def _art(ts):
+    """Timestamp UTC ISO de Linemate -> (fecha, 'HH:MM') en hora argentina (UTC-3, sin DST)."""
+    dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")) - datetime.timedelta(hours=3)
+    return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
+
+
+def _load_lecturas(date):
+    """Lecturas precomputadas (contexto en vivo) del dia. {} si no hay archivo."""
+    p = os.path.join(LECT_DIR, f"{date}.json")
+    if os.path.exists(p):
+        try:
+            with open(p, encoding="utf-8-sig") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
 
 
 @app.get("/")
@@ -72,6 +108,46 @@ def _compute_soccer(date):
              for i, g in enumerate(preds)]
     return {"date": date, "note": "modelo validado · 60% acc 1X2 · score = probabilidad, no apuesta",
             "cards": cards}
+
+
+def _compute_wc(date):
+    """Partidos del Mundial de `date` (hora ARG) desde Linemate + analisis precomputado.
+    Cada tarjeta trae: logos (bandera), hora ARG, el cuadro/picks del modelo y la lectura
+    (contexto en vivo) si esta cacheada. Todo listo de entrada -> el desplegable es instantaneo."""
+    games = linemate.games("wc")
+    lect = _load_lecturas(date)
+    ctx = analizar.load_ctx()                      # Elo se carga UNA vez para todos los partidos
+    cards = []
+    for g in games:
+        ts = g.get("timestamp")
+        if not ts:
+            continue
+        d_art, t_art = _art(ts)
+        if d_art != date:                          # Linemate trae ventana movil -> filtrar por dia ARG
+            continue
+        h = g.get("homeTeamData", {}).get("info", {})
+        a = g.get("awayTeamData", {}).get("info", {})
+        gid = g.get("id")
+        an = analizar.analyze(h.get("name", ""), a.get("name", ""), neutral=True,
+                              lm_codes=[h.get("code"), a.get("code")], league="wc", ctx=ctx, date=d_art)
+        cards.append({"gid": gid, "cat": SOC_CAT, "tag": "WC", "time": t_art, "date": d_art,
+                      "status": g.get("status"), "home": h.get("name"), "away": a.get("name"),
+                      "home_code": h.get("code"), "away_code": a.get("code"),
+                      "home_flag": _flag(h.get("code")), "away_flag": _flag(a.get("code")),
+                      "analysis": None if an.get("error") else an,
+                      "analysis_error": an.get("error"), "lectura": lect.get(gid)})
+    cards.sort(key=lambda c: c["time"])
+    return {"date": date, "note": "Mundial 2026 · modelo estadistico (sin cuotas) · hora argentina · "
+            "lectura = contexto en vivo precomputado", "cards": cards}
+
+
+@app.get("/api/wc/today")
+def wc_today(date: str = None):
+    date = date or datetime.date.today().isoformat()
+    try:
+        return cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
+    except Exception as e:
+        return {"date": date, "cards": [], "error": str(e)}
 
 
 @app.get("/api/mlb/today")

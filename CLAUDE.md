@@ -1,16 +1,26 @@
-> # ⚠️ DIRECCIÓN ACTUAL DEL PROYECTO (2026-06-13 en adelante) — LEER PRIMERO
+> # ⚠️ DIRECCIÓN ACTUAL DEL PROYECTO (2026-06-21 en adelante) — LEER PRIMERO
 >
-> El proyecto **pivoteó**: ya NO es un supra-agente de value betting / EV+ / cuotas.
-> Ahora es un **predictor de probabilidades puramente estadístico, SIN cuotas**
-> (prohibido buscar edges/odds/"ganarle a la casa"). La vara de éxito es **calibración**,
-> no ROI. El código vivo está en **`predictor/`** (self-contained: `soccer.py`+`elo.py`,
-> `mlb.py`, `core.py`, `feedback.py` loop de aprendizaje, `app.py`+`dashboard.html`).
-> Correr con el Python real: `C:/Users/Juant/AppData/Local/Python/bin/python.exe`.
+> El proyecto es un **supra-modelo de decisión de apuestas** = 3 cerebros + 1 loop:
+> (1) **predice** con probabilidades **calibradas** + confianza, (2) **valora** contra la
+> cuota de-vigeada (edge real), (3) **decide cuánto arriesgar** (Kelly fraccional por tier:
+> fuerte/moderado/bajo/pasar). Éxito = **crecimiento de bankroll con drawdown controlado**.
 >
-> Todo lo de ABAJO describe la **dirección VIEJA (EV+/cuotas)** y queda como histórico.
-> El código EV+ (`prop_value.py`, `scan.py`, `totals.py`, `analyze.py`) está fuera de misión.
-> Detalle del rumbo nuevo: ver memoria `project_pivote_predictor_estadistico` y
-> `feedback_no_odds_predictor_puro`.
+> **Reencuadre clave:** la etapa "calibración pura, sin cuotas" (jun-13 → jun-21) NO fue
+> abandonar el supra-agente: fue construirle el **cimiento** que la versión EV+ original nunca
+> tuvo. Ahora se **mergean**: ambición EV+/Kelly/bankroll montada sobre el motor calibrado.
+> La calibración es la **condición** que hace que el staking no reviente el bankroll.
+>
+> **Guardrails:** calibración es prerequisito de edge · edge siempre post-de-vig · forward-test
+> antes de confiar · Kelly fraccional nunca full · combos con correlación (Monte Carlo) nunca
+> producto de marginales · **las cuotas son insumo de VALOR, nunca feature del modelo** (si
+> entran al motor, predice al mercado = circular).
+>
+> **El plan completo y fasado está en `predictor/PLAN.md` (canónico).** Código vivo en
+> **`predictor/`**. Correr con el Python real: `C:/Users/Juant/AppData/Local/Python/bin/python.exe`.
+>
+> Lo de ABAJO es la **dirección VIEJA (EV+/cuotas sin calibración)** y queda como histórico.
+> El código EV+ viejo está movido a `legacy/`. Rumbo nuevo: ver `predictor/PLAN.md` y la
+> memoria `project_supra_modelo_rumbo`.
 >
 > ---
 

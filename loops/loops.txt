@@ -1,0 +1,5 @@
+Revisa toda la base de código y actualiza toda la documentación para que refleje la implementación actual.
+Optimiza el rendimiento. Mide cada proceso después de cada cambio.
+Encuentra errores accionables, identifica la causa raíz, corrígelos, verifica la corrección.
+Prueba todas las capacidades principales del producto, corrige los problemas encontrados y repite hasta que todos los criterios de evaluación se cumplan.
+Recupera trabajo valioso, elimina artefactos obsoletos y deja el repositorio limpio y mantenible.
