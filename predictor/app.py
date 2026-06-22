@@ -15,7 +15,7 @@ sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-import mlb, soccer, slate, budget, cache, analizar, linemate
+import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge
 
 app = FastAPI(title="Predictor")
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
@@ -110,6 +110,25 @@ def _compute_soccer(date):
             "cards": cards}
 
 
+def _edge_for(an, date):
+    """Edge 1X2: modelo CALIBRADO vs cuota ESPN de-vigeada -> veredicto/tier. None si no hay cuota."""
+    if not an or an.get("error") or not an.get("resultado"):
+        return None
+    try:
+        od = odds.wc_1x2(an["home"], an["away"], date)
+    except Exception:
+        od = None
+    if not od:
+        return None
+    model = [r["cal"] for r in an["resultado"]]                 # prob calibrada (Fase 1)
+    rows = edge.edge_market(model, [od["home"], od["draw"], od["away"]], "1x2")
+    labels = [an["home"], "Empate", an["away"]]
+    return {"provider": od["provider"],
+            "rows": [{"label": labels[i], "p_model": r["p_model"], "p_market": r["p_market"],
+                      "edge": r["edge"], "odds": r["odds"], "tier": r["tier"], "amount": r.get("amount", 0)}
+                     for i, r in enumerate(rows)]}
+
+
 def _compute_wc(date):
     """Partidos del Mundial de `date` (hora ARG) desde Linemate + analisis precomputado.
     Cada tarjeta trae: logos (bandera), hora ARG, el cuadro/picks del modelo y la lectura
@@ -135,7 +154,8 @@ def _compute_wc(date):
                       "home_code": h.get("code"), "away_code": a.get("code"),
                       "home_flag": _flag(h.get("code")), "away_flag": _flag(a.get("code")),
                       "analysis": None if an.get("error") else an,
-                      "analysis_error": an.get("error"), "lectura": lect.get(gid)})
+                      "analysis_error": an.get("error"), "lectura": lect.get(gid),
+                      "edge": _edge_for(an, d_art)})
     cards.sort(key=lambda c: c["time"])
     return {"date": date, "note": "Mundial 2026 · modelo estadistico (sin cuotas) · hora argentina · "
             "lectura = contexto en vivo precomputado", "cards": cards}
