@@ -25,6 +25,7 @@ candidates/
 
 # logs
 *.log
+predictor/retro_last.txt
 
 # python venv si se usa
 .venv/

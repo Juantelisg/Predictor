@@ -36,7 +36,8 @@ ALIAS = {"brasil": "Brazil", "marruecos": "Morocco", "espana": "Spain", "francia
          "italia": "Italy", "portugal": "Portugal", "argentina": "Argentina", "uruguay": "Uruguay",
          "colombia": "Colombia", "suiza": "Switzerland", "dinamarca": "Denmark", "canada": "Canada",
          "noruega": "Norway", "argelia": "Algeria", "irak": "Iraq", "austria": "Austria",
-         "jordania": "Jordan", "senegal": "Senegal", "ir iran": "Iran"}
+         "jordania": "Jordan", "senegal": "Senegal", "ir iran": "Iran",
+         "congo dr": "DR Congo", "rd congo": "DR Congo"}
 
 
 def _form_L5(df, team, asof, n=5):

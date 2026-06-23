@@ -10,7 +10,8 @@ Se evalua TODO lo que el modelo predijo (no solo lo jugado): la calibracion nece
 muestra SIN sesgo. Cero cuotas. Cada prediccion lleva model_version (no mezclar versiones).
 
 Uso:
-  python feedback.py log "Brazil" "Morocco"   # registra predicciones de hoy
+  python feedback.py log "Brazil" "Morocco"   # registra predicciones de un partido
+  python feedback.py log-wc [fecha]            # registra los WC de hoy AUN no jugados (pre-partido)
   python feedback.py eval                      # resuelve las que ya se jugaron
   python feedback.py report                    # calibracion acumulada
   python feedback.py selftest                  # prueba el resolver con un partido pasado
@@ -112,6 +113,14 @@ def log(local, visita, neutral=True, date=None):
     if not L or not V:
         print(f"  No reconozco: {local if not L else visita!r}")
         return
+    pred_path = os.path.join(PRED_DIR, f"{date}.jsonl")
+    if os.path.exists(pred_path):                      # idempotente: no re-loguear el mismo partido+version
+        with open(pred_path, encoding="utf-8-sig") as f:
+            done = {(r["home"], r["away"]) for r in (json.loads(ln) for ln in f if ln.strip())
+                    if r.get("model_version") == soccer.VERSION}
+        if (L, V) in done:
+            print(f"  Ya logueado: {L} vs {V} ({date}) -> skip")
+            return
     r = soccer.predict(df_elo, rating, L, V, neutral=neutral)
     mk = _markets(r, soccer._matrix(r["lh"], r["la"], soccer.RHO))
     ts = datetime.datetime.now().isoformat(timespec="seconds")
@@ -124,6 +133,26 @@ def log(local, visita, neutral=True, date=None):
         print(f"    {k:<12} {p * 100:5.1f}%")
     for sr in sb_rows:
         print(f"    {sr['market']:<16} {sr['prob'] * 100:5.1f}%")
+
+
+def log_wc(date=None):
+    """Loguea los partidos del Mundial de `date` que todavia NO arrancaron (status SCHEDULED).
+    Anti-leakage por diseno: solo pre-partido (si ya se jugaron, el resultado ya entro al modelo).
+    Idempotente: log() saltea los ya registrados. Pensado para correr al abrir el dashboard."""
+    date = date or datetime.date.today().isoformat()
+    try:
+        import lecturas
+        games = lecturas.games_today(date)
+    except Exception as e:
+        print(f"  no pude leer la slate WC ({e})")
+        return
+    pend = [g for g in games if g.get("status") == "SCHEDULED"]
+    if not pend:
+        print(f"  WC {date}: nada por loguear ({len(games)} partidos, ninguno SCHEDULED / ya empezaron).")
+        return
+    print(f"  WC {date}: logueando {len(pend)} partido(s) por jugar (pre-partido)...")
+    for g in pend:
+        log(g["home"], g["away"], neutral=True, date=date)
 
 
 def log_mlb(date=None):
@@ -373,6 +402,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "report"
     if cmd == "log" and len(sys.argv) >= 4:
         log(sys.argv[2], sys.argv[3])
+    elif cmd == "log-wc":
+        log_wc(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "log-mlb":
         log_mlb(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "eval":
