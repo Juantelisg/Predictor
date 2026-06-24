@@ -54,16 +54,31 @@ def _key(version, family):
     return f"{version}|{family}" if family else version
 
 
+def context_of(prob):
+    """Contexto del pick segun la magnitud de la prob: captura el eje del sesgo CONFIRMADO
+    (subconfianza en favoritos). 'fav' = favorito, 'dog' = no-favorito, 'mid' = parejo."""
+    return "fav" if prob >= 0.55 else "dog" if prob <= 0.45 else "mid"
+
+
+def _key3(version, family, context):
+    """Clave por (version, familia, contexto). Sin contexto -> cae a la clave de familia."""
+    return f"{version}|{family}|{context}" if context else _key(version, family)
+
+
 def fit(evals):
-    """Fitea un calibrador por (model_version, FAMILIA de mercado). Separar familias evita que
-    un mercado bien calibrado (1x2) y otro sesgado (over) se promedien en un solo Platt."""
+    """Fitea un calibrador por (model_version, FAMILIA) y tambien por (version, familia, CONTEXTO).
+    Separar familias evita que un mercado bien calibrado (1x2) y otro sesgado (over) se promedien;
+    el contexto refina aun mas, pero solo se ACTIVA cuando un bucket llega a MIN_N (si no, identidad
+    y apply() cae a la familia). Asi se construye la maquinaria sin sobre-ajustar con muestra chica."""
     by_key = {}
     for e in evals:
         fam = e["market"].split(":")[0]
-        k = _key(e.get("model_version", "?"), fam)
-        by_key.setdefault(k, ([], []))
-        by_key[k][0].append(e["prob"])
-        by_key[k][1].append(e["outcome"])
+        ver = e.get("model_version", "?")
+        ctx = context_of(e["prob"])
+        for k in (_key(ver, fam), _key3(ver, fam, ctx)):     # familia (workhorse) + contexto (refina)
+            by_key.setdefault(k, ([], []))
+            by_key[k][0].append(e["prob"])
+            by_key[k][1].append(e["outcome"])
     params = {}
     for k, (p, o) in by_key.items():
         a, b, n = fit_one(p, o)
@@ -87,11 +102,14 @@ def load():
     return {}
 
 
-def apply(prob, version, family=None, params=None):
-    """Aplica el calibrador de (version, familia) a una probabilidad (identidad si no hay).
-    Si no existe el de la familia, cae al de la version sola (retrocompatible)."""
+def apply(prob, version, family=None, params=None, context=None):
+    """Aplica el calibrador a una probabilidad. Prueba en cadena: (version,familia,contexto) ->
+    (version,familia) -> (version), y usa el PRIMERO no-identidad. Asi el contexto manda cuando
+    tiene volumen, y si no, cae limpio a la familia (retrocompatible; identidad si no hay nada)."""
     params = params if params is not None else load()
-    pr = params.get(_key(version, family)) or params.get(version)
-    if not pr or (pr["a"] == 1.0 and pr["b"] == 0.0):
-        return float(prob)
-    return float(_sigmoid(pr["a"] * _logit(prob) + pr["b"]))
+    keys = ([_key3(version, family, context)] if context else []) + [_key(version, family), version]
+    for k in keys:
+        pr = params.get(k)
+        if pr and not (pr["a"] == 1.0 and pr["b"] == 0.0):
+            return float(_sigmoid(pr["a"] * _logit(prob) + pr["b"]))
+    return float(prob)

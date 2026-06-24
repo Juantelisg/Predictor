@@ -333,7 +333,8 @@ def report():
     for e in ev:
         p, o = e["prob"], e["outcome"]
         f = e["market"].split(":")[0]
-        pc = calib.apply(p, e.get("model_version", "?"), f, cparams)   # prob calibrada POR FAMILIA
+        pc = calib.apply(p, e.get("model_version", "?"), f, cparams,    # calibrada por familia + CONTEXTO
+                         context=calib.context_of(p))                   # (cae a familia si el contexto no tiene n)
         bi, bic = min(int(p * 10), 9), min(int(pc * 10), 9)
         buckets.setdefault(bi, [0, 0.0, 0])
         buckets[bi][0] += 1; buckets[bi][1] += p; buckets[bi][2] += o

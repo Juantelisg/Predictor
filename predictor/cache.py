@@ -16,6 +16,18 @@ TTL_HIST = 24 * 60 * 60         # game-logs, stats de temporada: casi estaticos 
 TTL_STATIC = 7 * 24 * 60 * 60   # perfiles historicos de equipo (corners/cards): dias
 
 
+def _fetch_retry(fetcher, tries=3, backoff=1.2):
+    """Llama a fetcher() con reintentos: las APIs (ESPN/statsapi) sueltan ConnectionReset
+    transitorios -> reintentar evita que un blip de red tumbe un paso del loop."""
+    for i in range(tries):
+        try:
+            return fetcher()
+        except Exception:
+            if i == tries - 1:
+                raise
+            time.sleep(backoff * (i + 1))
+
+
 def cached(key, ttl_sec, fetcher):
     """Devuelve el valor cacheado si esta fresco; si no, llama a fetcher() y lo guarda."""
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -26,7 +38,7 @@ def cached(key, ttl_sec, fetcher):
                 return json.load(f)
         except Exception:
             pass
-    value = fetcher()
+    value = _fetch_retry(fetcher)
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(value, f)

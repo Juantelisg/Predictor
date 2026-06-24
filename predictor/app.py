@@ -15,7 +15,7 @@ sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge
+import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty
 
 app = FastAPI(title="Predictor")
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
@@ -121,7 +121,8 @@ def _edge_for(an, date):
     if not od:
         return None
     model = [r["cal"] for r in an["resultado"]]                 # prob calibrada (Fase 1)
-    rows = edge.edge_market(model, [od["home"], od["draw"], od["away"]], "1x2")
+    conf = uncertainty.confidence("1x2", soccer.VERSION)        # confianza por n efectiva (Fase 5)
+    rows = edge.edge_market(model, [od["home"], od["draw"], od["away"]], "1x2", confidence=conf)
     labels = [an["home"], "Empate", an["away"]]
     return {"provider": od["provider"],
             "rows": [{"label": labels[i], "p_model": r["p_model"], "p_market": r["p_market"],

@@ -9,7 +9,7 @@ Uso:
 """
 import sys, datetime
 import requests
-import cache, analizar, soccer, edge
+import cache, analizar, soccer, edge, uncertainty
 
 sys.stdout.reconfigure(encoding="utf-8")
 SB = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world"
@@ -67,7 +67,8 @@ def verdict_1x2(home, away, date, ctx=None):
     res = d["resultado"]                            # [Gana L, Empate, Gana V] con prob cruda y CALIBRADA
     model = [res[0]["cal"], res[1]["cal"], res[2]["cal"]]     # usar la calibrada (Fase 1)
     odds = [od["home"], od["draw"], od["away"]]
-    rows = edge.edge_market(model, odds, "1x2")
+    conf = uncertainty.confidence("1x2", soccer.VERSION)     # confianza por n efectiva (Fase 5)
+    rows = edge.edge_market(model, odds, "1x2", confidence=conf)
     return {"home": d["home"], "away": d["away"], "provider": od["provider"], "odds": odds, "rows": rows}
 
 

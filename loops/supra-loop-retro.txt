@@ -1,0 +1,56 @@
+-----------------------------------------------SUPRA LOOP DE RETRO (CALIBRADO)-----------------------------------------------
+
+OBJETIVO
+Backtest + diagnostico de calibracion del motor de selecciones (soccer-v3) contra los partidos
+del Mundial 2026 YA DISPUTADOS, ejecutable en cualquier momento. NO es un fit de marcadores
+exactos (eso seria overfitting: el motor da PROBABILIDADES, no marcadores deterministas, y
+torcer ~7 pesos para clavar ~40 resultados destruye la prediccion del resto del torneo).
+El exito se mide en CALIBRACION (log loss / Brier / reliability) y en SESGOS SISTEMATICOS,
+no en "acertar el 2-1".
+
+VENTANA (DINAMICA, no se pone a mano)
+  - inicio = 2026-06-11  (partido inaugural del Mundial 2026; constante WC_START)
+  - tope   = el dia en que se corre (hoy)
+  Se evaluan solo los partidos del Mundial con resultado conocido dentro de [inicio, hoy].
+
+COMO SE CORRE
+  C:/Users/Juant/AppData/Local/Python/bin/python.exe predictor/backtest_wc.py
+  (read-only: NO modifica ningun parametro del modelo)
+
+LOOP (5 pasos)
+
+1. FIXTURE A CIEGAS
+   Recopila del CSV martj42 los partidos tournament="FIFA World Cup" (excluyendo "qualification")
+   en [WC_START, hoy]. Solo los enfrentamientos; sin mirar el marcador todavia.
+
+2. PREDICCION DE CONTROL (sin fuga temporal)
+   Para cada partido, predice con los parametros ACTUALES usando SOLO informacion anterior a la
+   fecha de ese partido (Elo rodante pre-partido + Poisson/Dixon-Coles reentrenado por fecha).
+   Guarda la distribucion: 1X2 (blend Elo+Poisson), Over/Under 2.5, goles esperados, marcador modal.
+
+3. REVELACION DE RESULTADOS REALES
+   Recien ahora extrae los marcadores reales de esos mismos partidos.
+
+4. EVALUACION (criterio de exito = CALIBRACION, no exactitud)
+   - Scoring propio: log loss + Brier de 1X2 y de O/U 2.5, contra baseline. Accuracy 1X2.
+   - Reliability: en cada bucket de probabilidad, frecuencia observada vs predicha (ECE).
+   - SESGOS SISTEMATICOS (lo que de verdad accionamos):
+       * favoritos  -> P(favorito) media vs tasa real de acierto del favorito (sobre/subconfianza)
+       * empates    -> P(empate) media vs tasa real de empates
+       * totales    -> P(Over 2.5) media + goles esperados medios vs realidad (sesgo alcista/bajista)
+   - Tasa de marcador exacto: se reporta SOLO como reality-check (demuestra por que "clavar el
+     100%" es inalcanzable; un acierto exacto ~10-12% es lo esperable de un buen modelo).
+
+5. PROPUESTA DE AJUSTE (walk-forward, SIN commitear)
+   Si y solo si aparece un sesgo direccional ROBUSTO, proponer ajuste de un parametro
+   (ELO_W, RHO, ALPHA, HALFLIFE_DAYS, SINCE_YEARS, FRIENDLY_W) y VALIDARLO fuera de muestra:
+   el cambio que mejora el Mundial NO debe degradar el log loss del holdout de 2 anios de
+   internacionales (soccer.evaluate). Criterio de parada = reliability plana / sesgo neutralizado,
+   NUNCA "100% de resultados exactos".
+   Mostrar los parametros propuestos y la justificacion. NO tocar el codigo fuente de forma
+   definitiva hasta tener el visto bueno explicito.
+
+GUARDRAILS (del PLAN.md, no negociables)
+   - Nunca backtest sobre la misma data que tuneo (forward-test antes de confiar).
+   - Las cuotas son insumo de VALOR, jamas feature del modelo (si entran, predice al mercado = circular).
+   - Kelly fraccional, nunca full. Calibracion es prerequisito de edge.

@@ -9,8 +9,8 @@ set "PY=C:\Users\Juant\AppData\Local\Python\bin\python.exe"
 REM retro en segundo plano (no bloquea el dashboard): loguea los WC de hoy AUN no jugados
 REM (pre-partido, anti-leakage), resuelve lo ya jugado y actualiza la calibracion -> retro_last.txt
 echo.
-echo   Retro (log/eval/report) corriendo en segundo plano -^> predictor\retro_last.txt
-start "" /b powershell -NoProfile -Command "$p='%PY%'; & $p predictor\feedback.py log-wc > predictor\retro_last.txt; & $p predictor\feedback.py eval >> predictor\retro_last.txt; & $p predictor\feedback.py report >> predictor\retro_last.txt"
+echo   Loop completo (calibracion + edge + bankroll + CLV + persistencia) -^> predictor\loop_last.txt  +  backtest Mundial -^> predictor\backtest_wc_last.txt
+start "" /b powershell -NoProfile -Command "$p='%PY%'; & $p predictor\loop.py > predictor\loop_last.txt; & $p predictor\backtest_wc.py > predictor\backtest_wc_last.txt"
 
 echo.
 echo   Preparando analisis del dia...
