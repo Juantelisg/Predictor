@@ -29,6 +29,10 @@ candidates/
 *.log
 predictor/*_last.txt
 
+# frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+
 # python venv si se usa
 .venv/
 __pycache__/

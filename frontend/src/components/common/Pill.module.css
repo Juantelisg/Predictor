@@ -1,0 +1,15 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.alta   { color: var(--accent); background: var(--accent-dim); }
+.media  { color: var(--amber);  background: var(--amber-dim); }
+.baja   { color: var(--dim);    background: var(--panel-2); }
+.pass   { color: var(--faint);  background: var(--panel-2); }

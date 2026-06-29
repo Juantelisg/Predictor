@@ -1,0 +1,8 @@
+.wrap {
+  padding: 56px 20px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+}
+.title { font-weight: 700; color: var(--txt); font-size: 14px; margin-bottom: 6px; }
+.sub { color: var(--dim); font-size: 13px; line-height: 1.6; }
