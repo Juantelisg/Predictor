@@ -1,9 +1,33 @@
 import { create } from 'zustand'
 
-// Global sport + sub-tab state
 export const useSport = create((set) => ({
+  // Nivel 1: deporte activo
   sport: 'soccer',
-  subtab: 'today',
-  setSport: (sport) => set({ sport, subtab: 'today' }),
-  setSubtab: (subtab) => set({ subtab }),
+  // Nivel 2: partido seleccionado (null = volver al picker)
+  selectedMatch: null,
+  // Nivel 3: estado dentro del workspace
+  activeMainTab: 'team',      // 'team' | 'players'
+  activeSubTeam: 'home',      // 'home' | 'away'
+  activeCategory: null,        // null = All, o el market key
+
+  setSport: (sport) => set({
+    sport,
+    selectedMatch: null,
+    activeMainTab: 'team',
+    activeSubTeam: 'home',
+    activeCategory: null,
+  }),
+
+  selectMatch: (match) => set({
+    selectedMatch: match,
+    activeMainTab: 'team',
+    activeSubTeam: 'home',
+    activeCategory: null,
+  }),
+
+  clearMatch: () => set({ selectedMatch: null }),
+
+  setMainTab: (tab) => set({ activeMainTab: tab, activeSubTeam: 'home', activeCategory: null }),
+  setSubTeam: (team) => set({ activeSubTeam: team, activeCategory: null }),
+  setCategory: (cat) => set({ activeCategory: cat }),
 }))
