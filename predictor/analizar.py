@@ -32,14 +32,62 @@ def load_ctx():
     return df, df_elo, rating, models
 
 
+# mercado de Linemate -> etiqueta en español para el panorama de jugadores
+MARKET_ES = {"SHOTS": "tiros", "SHOTS_ON_TARGET": "tiros al arco", "GOALS": "goles",
+             "GOAL_OR_ASSIST": "gol o asistencia", "ASSISTS": "asistencias", "TACKLES": "entradas",
+             "CARDS": "tarjetas", "PASSES": "pases", "SAVES": "atajadas", "FOULS": "faltas",
+             "GOAL": "goles", "ANYTIME_GOALSCORER": "gol en cualquier momento"}
+
+
+def _panorama_read(side, recent, season):
+    """Lectura en criollo de la forma del jugador en ese mercado/lado. recent = L5 (o L10)."""
+    over = (side or "").lower().startswith("over")
+    r = recent if recent is not None else season
+    if r is None:
+        return ""
+    if over:
+        return "rendimiento alto" if r >= 80 else "en buena forma" if r >= 60 else "irregular" if r >= 40 else "rendimiento bajo"
+    return "muy por debajo" if r <= 20 else "perfil discreto" if r <= 40 else "irregular"
+
+
+def _player_panorama(lm_codes, league):
+    """Panorama de jugadores del partido (RECOMENDACION, no obligatorio): props de Linemate con
+    forma reciente. Solo presentación — forma de CLUB, no calibrado ni chequeado contra cuota.
+    Ordenado por mejor forma primero. [] si no hay/falla."""
+    if not lm_codes:
+        return []
+    try:
+        import linemate as lm
+        rnd = lambda v: round(v) if isinstance(v, (int, float)) else None
+        out = []
+        for t in lm.game_trends(league, *lm_codes):
+            if t.get("type") != "player":            # los de equipo van a la validación cruzada
+                continue
+            sp = t.get("splits", {})
+            l5, l10, season = sp.get("LAST_5"), sp.get("LAST_10"), sp.get("SEASON")
+            mk = (t.get("market") or "").upper()
+            out.append({"who": t["who"], "team": (t.get("team") or "").upper(),
+                        "market": MARKET_ES.get(mk, mk.replace("_", " ").lower()),
+                        "over": (t.get("side") or "").lower().startswith("over"), "line": t.get("line"),
+                        "l5": rnd(l5), "l10": rnd(l10), "season": rnd(season),
+                        "read": _panorama_read(t.get("side"), l5 if l5 is not None else l10, season),
+                        "signal": t.get("signal", "")})
+        out.sort(key=lambda r: (r["l5"] if r["l5"] is not None else (r["l10"] or 0)), reverse=True)
+        return out
+    except Exception:
+        return []
+
+
 def _linemate_trends(lm_codes, league):
-    """Trends de Linemate del partido, limpios (hit-rates redondeados). [] si falla/no hay."""
+    """Trends de EQUIPO de Linemate (los de jugador van al panorama). [] si falla/no hay."""
     if not lm_codes:
         return []
     try:
         import linemate as lm
         out = []
         for t in lm.game_trends(league, *lm_codes):
+            if t.get("type") == "player":            # jugadores -> _player_panorama
+                continue
             sp = t.get("splits", {})
             rnd = lambda v: round(v) if isinstance(v, (int, float)) else None
             out.append({"who": t["who"], "market": t["market"], "side": (t.get("side") or "")[:1].upper(),
@@ -127,6 +175,7 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
             "corners": corners, "cards": cards,
             "form": {"home": r.get("form_home"), "away": r.get("form_away")},
             "linemate": _linemate_trends(lm_codes, league),
+            "panorama": _player_panorama(lm_codes, league),
             "availability": _availability(L, V, date, league),
             "picks": _picks(L, V, resultado, doble, goles, corners)}
 

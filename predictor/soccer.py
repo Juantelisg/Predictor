@@ -37,7 +37,9 @@ ALIAS = {"brasil": "Brazil", "marruecos": "Morocco", "espana": "Spain", "francia
          "colombia": "Colombia", "suiza": "Switzerland", "dinamarca": "Denmark", "canada": "Canada",
          "noruega": "Norway", "argelia": "Algeria", "irak": "Iraq", "austria": "Austria",
          "jordania": "Jordan", "senegal": "Senegal", "ir iran": "Iran",
-         "congo dr": "DR Congo", "rd congo": "DR Congo"}
+         "congo dr": "DR Congo", "rd congo": "DR Congo",
+         # nombres cortos/nativos de Linemate que no matchean por similitud
+         "usa": "United States", "turkiye": "Turkey", "türkiye": "Turkey"}
 
 
 def _form_L5(df, team, asof, n=5):

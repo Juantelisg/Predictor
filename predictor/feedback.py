@@ -223,11 +223,12 @@ def _espn_soccer_score(home, away, date):
             params={"dates": date.replace("-", "")}, timeout=20).json())
     except Exception:
         return None
-    H, A = home.lower(), away.lower()
+    norm = lambda s: (soccer.ALIAS.get(s.strip().lower()) or s).strip().lower()   # Türkiye->Turkey, etc.
+    H, A = norm(home), norm(away)
     for ev in r.get("events", []):
         if not ev.get("status", {}).get("type", {}).get("completed"):
             continue
-        sc = {x["team"]["displayName"].lower(): int(x.get("score") or 0)
+        sc = {norm(x["team"]["displayName"]): int(x.get("score") or 0)
               for x in ev["competitions"][0]["competitors"]}
         if H in sc and A in sc:
             return sc[H], sc[A]
