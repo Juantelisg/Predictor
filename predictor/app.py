@@ -5,17 +5,22 @@ Sirve dashboard.html y expone los analisis que ya generamos por CLI como JSON:
   /api/soccer/today   -> partidos de selecciones de hoy (1X2 + totales + BTTS)
   /api/budget         -> presupuesto de la API escasa
 
-Levantar:
-  C:/Users/Juant/AppData/Local/Python/bin/python.exe -m uvicorn app:app --port 8900 --app-dir predictor
+Levantar (local):
+  uvicorn predictor.app:app --port 8900
   -> http://localhost:8900
+
+Deploy (Render): ver render.yaml en la raiz del repo.
 """
 import os, sys, datetime, json
+from dotenv import load_dotenv
+load_dotenv()
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
-import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty
+import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
 
 app = FastAPI(title="Predictor")
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
@@ -187,6 +192,82 @@ def soccer_today(date: str = None):
         return cache.cached(f"cards_soccer:{date}", TTL, lambda: _compute_soccer(date))
     except Exception as e:
         return {"date": date, "cards": [], "error": str(e)}
+
+
+@app.get("/api/cartera")
+def api_cartera(date: str = None):
+    """Cartera del dia: tickets armados con los picks confiables del Mundial (mismas tarjetas
+    que el tab), con su tajada por $1 de pote. El monto lo escala el frontend en vivo (share x pote)."""
+    date = date or datetime.date.today().isoformat()
+    try:
+        wc = cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))   # reusa las tarjetas del tab
+        return cache.cached(f"cartera:{date}", TTL, lambda: cartera.build(wc.get("cards", [])))
+    except Exception as e:
+        return {"date": date, "tickets": [], "error": str(e)}
+
+
+def _ticket_prose(prompt, timeout=240):
+    """Redacta la lectura del ticket via Anthropic SDK (requiere ANTHROPIC_API_KEY).
+    Devuelve el texto generado, o None si no hay key / falla (el caller usa fallback)."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return (msg.content[0].text or "").strip() or None
+    except Exception:
+        return None
+
+
+def _ticket_quant(date, kind, legs):
+    """Veredicto cuantitativo del ticket reusando las tarjetas YA cacheadas del tab Mundial
+    (los mismos numeros del motor de siempre: analizar.analyze). Devuelve (data, lect_by_match)."""
+    wc = cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
+    an_by_match, lect_by_match = {}, {}
+    for c in wc.get("cards", []):
+        key = f'{c["home"]} vs {c["away"]}'
+        an_by_match[key] = c.get("analysis")
+        lect_by_match[key] = c.get("lectura")
+    return ticket.analyze_ticket(legs, kind, an_by_match), lect_by_match
+
+
+@app.post("/api/ticket/analyze")
+def api_ticket(payload: dict = Body(...)):
+    """Veredicto cuantitativo del ticket del usuario (modelo calibrado vs cuota, edge, combo).
+    INSTANTANEO (sin Claude) -> el front lo muestra ya; la lectura llega aparte por /lectura.
+    payload = {date?, kind: combinada|simples, legs: [{match, market, pick, cuota, label?}]}."""
+    date = payload.get("date") or datetime.date.today().isoformat()
+    legs = payload.get("legs", [])
+    if not legs:
+        return {"error": "ticket vacio: agrega al menos una pierna"}
+    try:
+        data, _ = _ticket_quant(date, payload.get("kind", "combinada"), legs)
+        return {"date": date, "quant": data}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/ticket/lectura")
+def api_ticket_lectura(payload: dict = Body(...)):
+    """Lectura en vivo del ticket (claude -p; fallback determinista). Endpoint aparte para no
+    bloquear el veredicto: el front muestra el quant al instante y rellena esto cuando llega."""
+    date = payload.get("date") or datetime.date.today().isoformat()
+    legs = payload.get("legs", [])
+    if not legs:
+        return {"error": "ticket vacio"}
+    try:
+        data, lect_by_match = _ticket_quant(date, payload.get("kind", "combinada"), legs)
+        prose = _ticket_prose(ticket.prompt_for(data, lect_by_match))
+        return {"prose": prose or ticket.fallback_lectura(data, lect_by_match),
+                "prose_source": "claude" if prose else "fallback"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/api/budget")

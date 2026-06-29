@@ -1,0 +1,194 @@
+{
+ "soccer-v3|1x2": {
+  "a": 1.3557039786883776,
+  "b": 0.20940774241362237,
+  "n": 144,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|1x2|dog": {
+  "a": 1.0949218896631328,
+  "b": -0.11733625085049146,
+  "n": 108,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|dc": {
+  "a": 1.3557039786883776,
+  "b": -0.2094077424136224,
+  "n": 144,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|dc|fav": {
+  "a": 1.0949218896631325,
+  "b": 0.11733625085049154,
+  "n": 108,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|over": {
+  "a": 0.8142912918206993,
+  "b": 0.27892212532678157,
+  "n": 144,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|over|fav": {
+  "a": 2.1071418201144665,
+  "b": -0.9430906362710589,
+  "n": 48,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|over|dog": {
+  "a": 0.6608414987162436,
+  "b": -0.04606129009638989,
+  "n": 72,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|btts": {
+  "a": 0.8196001179935879,
+  "b": 0.07473491001294713,
+  "n": 48,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|btts|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 18,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|1x2|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 10,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|dc|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 10,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|over|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 24,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|1x2|fav": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 26,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|dc|dog": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 26,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|btts|dog": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 28,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|btts|fav": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 2,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|cs": {
+  "a": 0.9112727702699178,
+  "b": -0.1572922351591973,
+  "n": 84,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|cs|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 7,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|cs|dog": {
+  "a": 1.1694926752789714,
+  "b": 0.11864382326297492,
+  "n": 61,
+  "calib_version": "platt-v2"
+ },
+ "soccer-v3|cs|fav": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 16,
+  "calib_version": "platt-v2"
+ },
+ "corners-sb-v1|corners": {
+  "a": 0.7039105101627111,
+  "b": -0.2487293697038863,
+  "n": 63,
+  "calib_version": "platt-v2"
+ },
+ "corners-sb-v1|corners|dog": {
+  "a": 0.5320193361652171,
+  "b": -0.6012958767316677,
+  "n": 44,
+  "calib_version": "platt-v2"
+ },
+ "cards-sb-v1|cards": {
+  "a": 0.7682511041364122,
+  "b": -0.47120508662276706,
+  "n": 63,
+  "calib_version": "platt-v2"
+ },
+ "cards-sb-v1|cards|fav": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 32,
+  "calib_version": "platt-v2"
+ },
+ "cards-sb-v1|cards|dog": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 24,
+  "calib_version": "platt-v2"
+ },
+ "corners-sb-v1|corners|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 5,
+  "calib_version": "platt-v2"
+ },
+ "cards-sb-v1|cards|mid": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 7,
+  "calib_version": "platt-v2"
+ },
+ "mlb-ml-v1|ml": {
+  "a": 1.056727181208895,
+  "b": -0.13305395338482243,
+  "n": 98,
+  "calib_version": "platt-v2"
+ },
+ "mlb-ml-v1|ml|fav": {
+  "a": 0.7050873718655424,
+  "b": 0.1370181434025701,
+  "n": 44,
+  "calib_version": "platt-v2"
+ },
+ "mlb-ml-v1|ml|mid": {
+  "a": -0.1310433254165948,
+  "b": -0.19115247377920389,
+  "n": 47,
+  "calib_version": "platt-v2"
+ },
+ "corners-sb-v1|corners|fav": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 14,
+  "calib_version": "platt-v2"
+ },
+ "mlb-ml-v1|ml|dog": {
+  "a": 1.0,
+  "b": 0.0,
+  "n": 7,
+  "calib_version": "platt-v2"
+ }
+}

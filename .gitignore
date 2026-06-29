@@ -6,11 +6,13 @@ config/.env
 *.pem
 docs/keys.txt
 
-# cache
+# cache y datos efimeros
 data/odds/
 data/stats/
 data/cache/
-predictor/data/
+predictor/data/cache/
+predictor/data/predictor.db
+predictor/data/uvicorn.log
 *.cache
 
 # candidatos: salida transitoria del scanner (se regeneran)

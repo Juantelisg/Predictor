@@ -2,10 +2,16 @@
 
 Evita re-fetchear durante el desarrollo. Las stats APIs (statsapi.mlb.com, etc.) son
 gratis, asi que el TTL es por comodidad, no por quota.
+
+En produccion (Render free) el disco es efimero: si el write falla, cae al in-memory
+fallback (_MEM_CACHE). La semantica es la misma; solo se pierde entre reinicios.
 """
 import os, json, time, hashlib
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cache")
+
+# fallback in-memory: {key: (value, expires_at)}
+_MEM_CACHE: dict = {}
 
 # Politica de TTL por VOLATILIDAD del dato (la cache es el multiplicador de requests:
 # cada fetch elige su TTL segun cuanto cambia el dato -> protege la quota escasa).
@@ -29,19 +35,34 @@ def _fetch_retry(fetcher, tries=3, backoff=1.2):
 
 
 def cached(key, ttl_sec, fetcher):
-    """Devuelve el valor cacheado si esta fresco; si no, llama a fetcher() y lo guarda."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    path = os.path.join(CACHE_DIR, hashlib.md5(key.encode()).hexdigest() + ".json")
-    if os.path.exists(path) and (time.time() - os.path.getmtime(path)) < ttl_sec:
-        try:
+    """Devuelve el valor cacheado si esta fresco; si no, llama a fetcher() y lo guarda.
+    Intenta disco primero; si falla (filesystem de solo lectura / sin permisos) cae a memoria."""
+    now = time.time()
+
+    # 1. in-memory hit (cubre tanto el fallback como un segundo hit rapido en el mismo proceso)
+    if key in _MEM_CACHE:
+        val, exp = _MEM_CACHE[key]
+        if now < exp:
+            return val
+
+    # 2. disco
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        path = os.path.join(CACHE_DIR, hashlib.md5(key.encode()).hexdigest() + ".json")
+        if os.path.exists(path) and (now - os.path.getmtime(path)) < ttl_sec:
             with open(path, encoding="utf-8") as f:
                 return json.load(f)
+    except Exception:
+        path = None
+
+    value = _fetch_retry(fetcher)
+
+    # 3. guardar en disco si es posible, siempre en memoria
+    if path:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(value, f)
         except Exception:
             pass
-    value = _fetch_retry(fetcher)
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(value, f)
-    except Exception:
-        pass
+    _MEM_CACHE[key] = (value, now + ttl_sec)
     return value

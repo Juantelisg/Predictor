@@ -1,0 +1,51 @@
+{
+ "20260620-SWE-NED": {
+  "summary": "Países Bajos es favorito legítimo (8º FIFA vs 34º), pero Suecia llega de golear 5-1 y lidera el grupo: no es un lock.",
+  "context": [
+   "Sede: NRG Stadium, Houston · 14:00 ART · cancha neutral.",
+   "Grupo F: Suecia 1ª (3 pts, +4) tras golear 5-1 a Túnez; Países Bajos 3º (1 pt) tras empatar 2-2 con Japón → NED entra obligado a ganar.",
+   "Baja clave neerlandesa: Jurriën Timber OUT por lesión; zaga menos asentada (Van Hecke junto a Van Dijk) → la valla invicta de NED (41%) puede ser optimista.",
+   "Depay en duda física: el XI probable arranca con Malen. Verbruggen recuperado, ataja.",
+   "Suecia sin lesiones y con Gyökeres + Isak (dosificado pero titular): amenaza ofensiva que el Elo subpondera → sostiene 'Suecia marca / BTTS' por encima del 51% del modelo.",
+   "Modelo: Países Bajos ~66% (el recalibrador sube al favorito, sesgo conocido). El empate (29%) es escenario vivo; Over 1.5 sólido, Over 2.5 y BTTS son moneda."
+  ],
+  "sources": [
+   {"title": "PrizePicks · XI confirmados", "url": "https://www.prizepicks.com/playbook-article/netherlands-vs-sweden-lineups-confirmed-world-cup-2026-starting-xis"},
+   {"title": "ESPN · injury tracker", "url": "https://www.espn.com/soccer/story/_/id/48572979/2026-fifa-world-cup-injuries-tracker-which-stars-miss-latest-info"},
+   {"title": "Goal · preview", "url": "https://www.goal.com/en/news/netherlands-sweden-world-cup-preview/bltf9940d1e6141f392"}
+  ],
+  "generated_at": "2026-06-20"
+ },
+ "20260620-CIV-GER": {
+  "summary": "Alemania llega lanzada (6 triunfos seguidos, 7-1 a Curaçao) y es claro favorito; Costa de Marfil viene de ganar 1-0 a Ecuador y no es presa fácil.",
+  "context": [
+   "Sede: BMO Field, Toronto · 17:00 ART · cancha neutral.",
+   "Forma: Alemania con 6 victorias seguidas, incluida la goleada 7-1 a Curaçao en el debut; Costa de Marfil ganó 1-0 a Ecuador. Ambos con puntaje ideal en la J1.",
+   "Alemania sin lesiones (perdió a Lennart Karl pre-torneo → Ouedraogo). XI probable: Neuer; Kimmich, Tah, Schlotterbeck, Brown; Pavlovic, Nmecha; Sané, Musiala, Wirtz; Havertz.",
+   "Costa de Marfil: Evan Ndicka (zaguero) en duda por molestia muscular; Elye Wahi disponible tras resolverse el problema de visa.",
+   "Trends Linemate alineados con el favorito (Musiala / Havertz / Sané con tiros altos), pero son muestras de Mundial (1-2 partidos) → poca señal.",
+   "Modelo: Alemania favorito (~63%), probablemente CORTO — el modelo subconfía en favoritos claros y acá Alemania llega muy lanzada. Over de tarjetas: humildad (el modelo las sobreestima)."
+  ],
+  "sources": [
+   {"title": "Sports Mole · team news / XI", "url": "https://www.sportsmole.co.uk/football/germany/injury-news/team-news/germany-vs-ivory-coast-injury-suspension-list-predicted-xis_599492.html"},
+   {"title": "Goal · preview", "url": "https://www.goal.com/en-us/news/germany-ivory-coast-world-cup-preview/bltf447b5794f5d1174"}
+  ],
+  "generated_at": "2026-06-20"
+ },
+ "20260620-CUW-ECU": {
+  "summary": "Ecuador es favorito abrumador y juega un casi-eliminatorio; la duda es el margen, no el ganador.",
+  "context": [
+   "Sede: Kansas City · 21:00 ART · cancha neutral.",
+   "Grupo E: ambos perdieron la J1 — Ecuador 0-1 ajustado vs Costa de Marfil; Curaçao 1-7 vs Alemania en su debut histórico. El perdedor de hoy queda casi eliminado.",
+   "Ecuador necesita ganar y es favorito amplio. XI probable con Caicedo de pivote (4-4-2): Galíndez; Preciado, Pacho, Ordóñez, Hincapié; Caicedo, Franco; Yeboah, Vite, Plata; Valencia.",
+   "Curaçao (4-5-1, Locadia de '9') llega de encajar 7 → planteo defensivo; el modelo le da apenas 10% de BTTS (poca chance de que marque).",
+   "Modelo: Ecuador ~84%, alineado con la lectura de 'favorito abrumador'. Over 1.5 67% pero Over 2.5 sólo 40% → Ecuador puede ganar por la mínima."
+  ],
+  "sources": [
+   {"title": "RotoWire · preview / XI", "url": "https://www.rotowire.com/soccer/article/ecuador-vs-curacao-preview-predicted-lineups-team-news-tactical-analysis-2026-world-cup-group-e-118799"},
+   {"title": "Sports Mole · preview", "url": "https://www.sportsmole.co.uk/football/ecuador/world-cup-2026/preview/ecuador-vs-curacao-prediction-team-news-lineups_599563.html"},
+   {"title": "Sports Illustrated · preview", "url": "https://www.si.com/soccer/ecuador-vs-curacao-world-cup-preview-predictions-lineups-6-20-26"}
+  ],
+  "generated_at": "2026-06-20"
+ }
+}

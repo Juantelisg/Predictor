@@ -1,0 +1,30 @@
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "1x2:home", "prob": 0.2981, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "1x2:draw", "prob": 0.2939, "model_version": "soccer-v3", "result": "3-2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "1x2:away", "prob": 0.408, "model_version": "soccer-v3", "result": "3-2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "dc:1x", "prob": 0.592, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "dc:x2", "prob": 0.7019, "model_version": "soccer-v3", "result": "3-2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "dc:12", "prob": 0.7061, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "over:1.5", "prob": 0.7407, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "over:2.5", "prob": 0.4824, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "over:3.5", "prob": 0.2647, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "btts:yes", "prob": 0.5333, "model_version": "soccer-v3", "result": "3-2", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "cs:home", "prob": 0.2411, "model_version": "soccer-v3", "result": "3-2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Turkey", "away": "United States", "market": "cs:away", "prob": 0.307, "model_version": "soccer-v3", "result": "3-2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "1x2:home", "prob": 0.3449, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "1x2:draw", "prob": 0.3003, "model_version": "soccer-v3", "result": "0-0", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "1x2:away", "prob": 0.3549, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "dc:1x", "prob": 0.6451, "model_version": "soccer-v3", "result": "0-0", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "dc:x2", "prob": 0.6551, "model_version": "soccer-v3", "result": "0-0", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "dc:12", "prob": 0.6997, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "over:1.5", "prob": 0.6649, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "over:2.5", "prob": 0.3901, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "over:3.5", "prob": 0.1901, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "btts:yes", "prob": 0.4635, "model_version": "soccer-v3", "result": "0-0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "cs:home", "prob": 0.3197, "model_version": "soccer-v3", "result": "0-0", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "cs:away", "prob": 0.3304, "model_version": "soccer-v3", "result": "0-0", "outcome": 1, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "corners:over:8.5", "prob": 0.197, "model_version": "corners-sb-v1", "result": "2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "corners:over:9.5", "prob": 0.115, "model_version": "corners-sb-v1", "result": "2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "corners:over:10.5", "prob": 0.062, "model_version": "corners-sb-v1", "result": "2", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "cards:over:2.5", "prob": 0.746, "model_version": "cards-sb-v1", "result": "0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "cards:over:3.5", "prob": 0.545, "model_version": "cards-sb-v1", "result": "0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
+{"date": "2026-06-25", "home": "Paraguay", "away": "Australia", "market": "cards:over:4.5", "prob": 0.35, "model_version": "cards-sb-v1", "result": "0", "outcome": 0, "evaluated_at": "2026-06-26T01:44:54"}
