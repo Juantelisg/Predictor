@@ -20,9 +20,12 @@ sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
+import track, history
 
 app = FastAPI(title="Predictor")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
 TTL = 600                                  # cache de resultados 10 min -> tabs instantaneos
 LECT_DIR = os.path.join(ROOT, "data", "lecturas")   # lecturas (contexto en vivo) precomputadas
@@ -273,3 +276,53 @@ def api_ticket_lectura(payload: dict = Body(...)):
 @app.get("/api/budget")
 def api_budget():
     return budget.status()
+
+
+# ── Track Record ─────────────────────────────────────────────────────────────
+
+@app.get("/api/track-record")
+def api_track_record(market: str = None):
+    """Calibración del modelo: reliability diagram, Brier, ECE.
+    ?market=1x2|over|btts|corners|cards|dc (None = todos)"""
+    try:
+        calib  = cache.cached(f"track:calib:{market}", 3600,
+                              lambda: track.calibration_data(market))
+        mkts   = cache.cached("track:by_market", 3600, track.by_market_summary)
+        roi    = cache.cached("track:roi", 3600, track.roi_summary)
+        return {"calibration": calib, "by_market": mkts, "roi": roi}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/history")
+def api_history(days: int = 14):
+    """Ultimos `days` dias de partidos evaluados con resultado por pick."""
+    try:
+        return cache.cached(f"history:{days}", 1800,
+                            lambda: {"games": history.recent_games(days)})
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/edge/today")
+def api_edge_today(date: str = None):
+    """Edge matrix: todos los partidos del dia x todos los mercados x edge vs ESPN.
+    Reutiliza las tarjetas WC ya cacheadas."""
+    date = date or datetime.date.today().isoformat()
+    try:
+        wc = cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
+        rows = []
+        for c in wc.get("cards", []):
+            if not c.get("edge"):
+                continue
+            rows.append({
+                "home": c["home"], "away": c["away"],
+                "time": c.get("time"), "home_flag": c.get("home_flag"),
+                "away_flag": c.get("away_flag"),
+                "markets": c["edge"]["rows"],
+                "provider": c["edge"]["provider"],
+            })
+        rows.sort(key=lambda r: max((m["edge"] for m in r["markets"]), default=0), reverse=True)
+        return {"date": date, "rows": rows}
+    except Exception as e:
+        return {"date": date, "rows": [], "error": str(e)}

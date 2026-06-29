@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>predictor</title>
+<title>Predictor · Análisis deportivo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -11,8 +12,8 @@
     --bg:#0a0b0f; --panel:#13151b; --panel-2:#1a1d25;
     --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.045);
     --txt:#eceef2; --dim:#8a90a0; --faint:#5c6270;
-    --accent:#5eead4; --amber:#fbbf24;
-    --r:14px; --maxw:880px; --shadow:0 8px 30px -16px rgba(0,0,0,.7);
+    --accent:#5eead4; --amber:#fbbf24; --red:#f87171;
+    --r:14px; --maxw:900px; --shadow:0 8px 30px -16px rgba(0,0,0,.7);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -20,9 +21,10 @@
     font-size:14px;line-height:1.5;letter-spacing:-.01em}
   .num{font-variant-numeric:tabular-nums}
 
-  header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 82%,transparent);
-    backdrop-filter:blur(14px);border-bottom:1px solid var(--line-2)}
-  .bar{max-width:var(--maxw);margin:0 auto;padding:16px 22px;display:flex;align-items:center;gap:12px}
+  /* ── Header ─────────────────────────── */
+  header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 85%,transparent);
+    backdrop-filter:blur(16px);border-bottom:1px solid var(--line-2)}
+  .bar{max-width:var(--maxw);margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:12px}
   .brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.03em;font-size:16px}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
     box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
@@ -31,17 +33,20 @@
   .chip{font-size:11.5px;color:var(--dim);background:var(--panel);border:1px solid var(--line);
     padding:5px 11px;border-radius:99px;white-space:nowrap}
   .chip b{color:var(--accent);font-weight:600}
-  nav{max-width:var(--maxw);margin:0 auto;padding:0 22px;display:flex}
-  .tab{padding:11px 2px;margin-right:22px;color:var(--dim);font-weight:600;font-size:13.5px;
-    cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+  nav{max-width:var(--maxw);margin:0 auto;padding:0 22px;display:flex;
+    overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .tab{padding:11px 2px;margin-right:20px;color:var(--dim);font-weight:600;font-size:13.5px;
+    cursor:pointer;border-bottom:2px solid transparent;transition:.15s;flex-shrink:0}
   .tab:hover{color:var(--txt)} .tab.on{color:var(--txt);border-bottom-color:var(--accent)}
 
   main{max-width:var(--maxw);margin:0 auto;padding:22px 22px 60px}
   .note{font-size:11.5px;color:var(--faint);margin-bottom:14px;display:flex;align-items:center;gap:7px}
   .note::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
   .list{display:flex;flex-direction:column;gap:11px}
+  .warn{font-size:11px;color:var(--amber);margin-top:7px;padding-left:1px}
 
-  /* ---- tarjeta MLB (legacy) = 1 partido ---- */
+  /* ── Cards básicas (MLB legacy) ──────── */
   .pcard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--cat,var(--accent));
     border-radius:var(--r);padding:15px 17px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
   .pcard:hover{border-color:rgba(255,255,255,.16);transform:translateY(-1px)}
@@ -56,12 +61,10 @@
   .bscore{font-size:13px;font-weight:800;padding:5px 10px;border-radius:7px;font-variant-numeric:tabular-nums;flex-shrink:0}
   .logros{margin-top:13px;display:flex;flex-direction:column}
   .logro{display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid var(--line-2)}
-  .lm{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
-    width:96px;flex-shrink:0}
+  .lm{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);width:96px;flex-shrink:0}
   .lp{flex:1;font-weight:600;font-size:13px;color:var(--txt);min-width:0}
   .lv{font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:6px;flex-shrink:0;font-variant-numeric:tabular-nums}
-  .pins{list-style:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-2);
-    display:flex;flex-direction:column;gap:5px}
+  .pins{list-style:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:5px}
   .pins li{position:relative;padding-left:14px;color:var(--dim);font-size:12px;line-height:1.5}
   .pins li::before{content:"";position:absolute;left:2px;top:7px;width:3px;height:3px;border-radius:50%;background:var(--faint)}
 
@@ -69,7 +72,7 @@
   .lvl-MEDIA{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}
   .lvl-BAJA{color:var(--dim);background:var(--panel-2)}
 
-  /* ---- fila Mundial (lista + desplegable) ---- */
+  /* ── Filas Mundial ────────────────────── */
   .wcrow{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--cat,var(--accent));
     border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
   .wchead{display:flex;align-items:center;gap:13px;padding:14px 16px;cursor:pointer;transition:background .15s}
@@ -77,15 +80,13 @@
   .wctime{font-weight:700;font-size:13px;color:var(--dim);min-width:44px;font-variant-numeric:tabular-nums}
   .teams{flex:1;display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
   .team{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14.5px;letter-spacing:-.02em}
-  .flag{width:27px;height:18px;border-radius:3px;object-fit:cover;background:var(--panel-2);
-    flex-shrink:0;box-shadow:0 0 0 1px var(--line)}
+  .flag{width:27px;height:18px;border-radius:3px;object-fit:cover;background:var(--panel-2);flex-shrink:0;box-shadow:0 0 0 1px var(--line)}
   .vsx{color:var(--faint);font-weight:600;font-size:11.5px}
   .headprob{font-weight:800;font-size:12.5px;padding:4px 9px;border-radius:7px;font-variant-numeric:tabular-nums;flex-shrink:0}
   .chev{color:var(--faint);flex-shrink:0;transition:transform .2s;font-size:12px}
   .wcrow.open .chev{transform:rotate(90deg)}
   .wcbody{display:none;padding:2px 16px 16px}
   .wcrow.open .wcbody{display:block}
-
   .sec{margin-top:16px}
   .sec h4{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
   .mrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line-2);font-size:13px}
@@ -95,7 +96,7 @@
   .pick{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:9px;background:var(--panel-2);margin-bottom:6px}
   .pick .pm{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);width:88px;flex-shrink:0}
   .pick .pp{flex:1;font-weight:600;font-size:13.5px}
-  .warn{font-size:11px;color:var(--amber);margin-top:7px;padding-left:1px}
+  .pend{color:var(--faint);font-size:12px;font-style:italic;line-height:1.6}
   .lect .sum{font-weight:600;font-size:13.5px;color:var(--txt);margin-bottom:9px}
   .lect ul{list-style:none;display:flex;flex-direction:column;gap:7px}
   .lect li{position:relative;padding-left:15px;color:var(--dim);font-size:12.5px;line-height:1.55}
@@ -106,9 +107,6 @@
   .lmtr{display:flex;align-items:center;gap:9px;font-size:12px;padding:5px 0;border-top:1px solid var(--line-2);color:var(--dim)}
   .lmtr .w{flex:1;color:var(--txt);font-weight:500;min-width:0}
   .lmtr .hr{font-variant-numeric:tabular-nums;min-width:108px;text-align:right;font-size:11.5px}
-  .pend{color:var(--faint);font-size:12px;font-style:italic;line-height:1.6}
-
-  /* ---- capa de valor (edge / stake) + XI ---- */
   .erow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line-2);font-size:12.5px}
   .erow .el{font-weight:600;color:var(--txt);min-width:92px;flex-shrink:0}
   .erow .em{flex:1;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums;min-width:0}
@@ -119,12 +117,129 @@
   .t-mod{color:var(--amber);background:color-mix(in srgb,var(--amber) 13%,transparent)}
   .t-bajo{color:var(--dim);background:var(--panel-2)}
   .t-pasar{color:var(--faint);background:var(--panel-2)}
-  .t-susp{color:#f87171;background:color-mix(in srgb,#f87171 15%,transparent)}
+  .t-susp{color:var(--red);background:color-mix(in srgb,var(--red) 15%,transparent)}
   .xit{padding:8px 0;border-top:1px solid var(--line-2)}
   .xit b{font-size:13px;color:var(--txt)}
   .xif{color:var(--faint);font-size:11px;margin-left:7px;font-variant-numeric:tabular-nums}
   .xip{color:var(--dim);font-size:12px;margin-top:4px;line-height:1.55}
+  .macro{display:flex;align-items:center;gap:9px;margin:20px 0 6px;font-size:11px;font-weight:800;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .macro:first-child{margin-top:6px}
+  .macro::before{content:"";width:16px;height:2px;border-radius:2px;background:var(--accent)}
+  .macro span{color:var(--faint);font-weight:600;letter-spacing:0;text-transform:none;font-size:11px}
+  .macro.dim{color:var(--dim)} .macro.dim::before{background:var(--faint)}
+  .pteam{margin-top:9px}
+  .pteamh{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px;color:var(--txt);padding:5px 0 1px}
+  .pteamh .flag{width:20px;height:13px}
+  .pnrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line-2);font-size:12.5px}
+  .pnwho{font-weight:700;color:var(--txt);min-width:132px;flex-shrink:0}
+  .pnmkt{color:var(--dim);font-size:12px;min-width:118px;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .pnread{font-weight:700;font-size:9.5px;letter-spacing:.03em;padding:2px 7px;border-radius:6px;flex-shrink:0}
+  .rd-hot{color:#fb7185;background:color-mix(in srgb,#fb7185 16%,transparent)}
+  .rd-warm{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+  .rd-mid{color:var(--dim);background:var(--panel-2)}
+  .rd-cold{color:var(--faint);background:var(--panel-2)}
+  .pnhr{flex:1;text-align:right;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
 
+  /* ── Cartera ─────────────────────────── */
+  .potewrap{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:15px 17px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .potewrap label{font-weight:600;font-size:13.5px;color:var(--txt)}
+  .potewrap .cur{color:var(--faint);font-weight:700;font-size:15px}
+  .poteinput{width:128px;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);
+    border-radius:9px;padding:9px 12px;font-size:16px;font-weight:800;outline:none;font-variant-numeric:tabular-nums}
+  .poteinput:focus{border-color:var(--accent)}
+  .ticket{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:10px}
+  .thead{display:flex;align-items:center;gap:10px;padding-bottom:8px}
+  .tnum{font-weight:800;font-size:11.5px;color:var(--txt);letter-spacing:.03em}
+  .tmeta{flex:1;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
+  .tmeta b{color:var(--dim)}
+  .tamt{font-weight:800;font-size:15px;color:var(--accent);font-variant-numeric:tabular-nums}
+  .tamt.zero{color:var(--faint);font-weight:600}
+  .tleg{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line-2)}
+  .tlg{color:var(--faint);font-size:11px;min-width:120px;flex-shrink:0}
+  .tlm{flex:1;font-size:12.5px;color:var(--dim);min-width:0}
+  .tlm b{color:var(--txt);font-weight:700}
+  .tlp{font-weight:800;font-size:12px;padding:2px 8px;border-radius:6px;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .ctot{display:flex;justify-content:space-between;align-items:center;padding:12px 0 2px;margin-top:6px;
+    border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+  .ctot b{color:var(--accent);font-size:15px;font-variant-numeric:tabular-nums}
+
+  /* ── Mi Ticket ───────────────────────── */
+  .tkbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:13px 15px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .tkbar label{font-weight:600;font-size:13px;color:var(--txt)}
+  .tksel,.tkin{background:var(--panel-2);border:1px solid var(--line);color:var(--txt);border-radius:8px;
+    padding:8px 10px;font-size:12.5px;outline:none;font-family:inherit}
+  .tksel:focus,.tkin:focus{border-color:var(--accent)}
+  .tkrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line-2)}
+  .tkrow .tkmatch{min-width:150px}.tkrow .tkmkt{min-width:118px}.tkrow .tkpick{flex:1;min-width:120px}
+  .tkrow .tkcuota{width:74px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+  .tkx{cursor:pointer;color:var(--faint);font-weight:800;font-size:16px;padding:0 4px;flex-shrink:0}
+  .tkx:hover{color:var(--red)}
+  .tkbtn{cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--txt);
+    border-radius:8px;padding:8px 15px;font-size:12.5px;font-weight:700;font-family:inherit}
+  .tkbtn:hover{border-color:var(--accent)}
+  .tkgo{background:var(--accent);color:#04211c;border-color:var(--accent);font-weight:800}
+  .tkgo:disabled{opacity:.5;cursor:default}
+  .tkv{display:flex;align-items:center;gap:9px;padding:8px 0 2px;border-top:1px solid var(--line-2)}
+  .tkv .vlab{flex:1;font-size:12.5px;color:var(--dim);min-width:0}.tkv .vlab b{color:var(--txt)}
+  .tkv .vn{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;min-width:158px;text-align:right}
+  .tier{font-weight:800;font-size:10.5px;padding:2px 7px;border-radius:5px;flex-shrink:0;letter-spacing:.02em}
+  .t-VALOR{background:rgba(94,234,212,.16);color:#5eead4}.t-JUSTA{background:rgba(91,156,255,.16);color:#5b9cff}
+  .t-CUOTA{background:rgba(255,170,80,.16);color:#ffaa50}.t-REVISAR{background:rgba(255,107,107,.16);color:#ff6b6b}
+  .t-CONTEXTO,.t-SIN{background:var(--panel-2);color:var(--faint)}
+  .tknote{font-size:11px;color:var(--faint);padding:0 0 4px 2px;line-height:1.5}
+  .tkcombo{margin-top:10px;padding:11px 13px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;font-size:12.5px;color:var(--dim);line-height:1.6}.tkcombo b{color:var(--accent)}
+  .tkprose{margin-top:14px;padding:15px 17px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);white-space:pre-wrap;font-size:13px;line-height:1.62;color:var(--txt);box-shadow:var(--shadow)}
+  .tkprose h4{margin:0 0 9px;font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .tkspin{color:var(--dim);font-size:13px;padding:14px 2px}
+
+  /* ── Track Record ────────────────────── */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  @media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+  .stat-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-align:center}
+  .stat-box .sval{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)}
+  .stat-box .slab{font-size:10.5px;color:var(--faint);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:5px}
+  .chart-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:14px}
+  .chart-box h4{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .mkt-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .mkt-tbl th{text-align:left;color:var(--faint);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:0 10px 8px 0}
+  .mkt-tbl td{padding:6px 10px 6px 0;border-top:1px solid var(--line-2);color:var(--dim)}
+  .mkt-tbl td:first-child{color:var(--txt);font-weight:600;text-transform:capitalize}
+  .hist-game{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:8px}
+  .hist-hd{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+  .hist-match{flex:1;font-weight:700;font-size:13.5px;letter-spacing:-.01em}
+  .hist-date{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .hist-res{font-size:12px;font-weight:700;color:var(--dim);background:var(--panel-2);padding:2px 8px;border-radius:6px}
+  .hist-pick{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line-2);font-size:12px}
+  .hist-lab{flex:1;color:var(--dim)}
+  .hist-prob{font-variant-numeric:tabular-nums;color:var(--faint);min-width:36px;text-align:right;font-size:11px}
+  .hist-out{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:800;flex-shrink:0}
+  .out-win{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+  .out-loss{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+
+  /* ── Edge Feed ───────────────────────── */
+  .ef-row{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .ef-match{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .ef-time{font-size:12.5px;color:var(--dim);min-width:40px;font-variant-numeric:tabular-nums;font-weight:700}
+  .ef-teams{flex:1;font-weight:700;font-size:14px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ef-prov{font-size:10px;color:var(--faint);border:1px solid var(--line);padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .ef-markets{display:flex;flex-wrap:wrap;gap:7px}
+  .ef-mkt{display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-radius:9px;
+    background:var(--panel-2);border:1px solid var(--line);min-width:86px;transition:border-color .15s}
+  .ef-mkt.has-edge{border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .ef-mkt-name{font-size:9.5px;color:var(--faint);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .ef-mkt-val{font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums}
+  .ef-mkt-tier{font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-top:1px}
+  .ef-pos{color:var(--accent)} .ef-pass{color:var(--faint)} .ef-susp{color:var(--red)}
+  .ef-tier-f{color:var(--accent)} .ef-tier-m{color:var(--amber)} .ef-tier-b{color:var(--dim)} .ef-tier-p{color:var(--faint)}
+
+  /* ── Compartidos ─────────────────────── */
   .empty{padding:48px 20px;text-align:center;color:var(--dim);font-size:13.5px}
   .empty b{color:var(--txt)}
   .skel{height:64px;border-radius:var(--r);background:linear-gradient(100deg,
@@ -139,27 +254,45 @@
   <div class="bar">
     <div class="brand"><span class="dot"></span>predictor<span>/ análisis</span></div>
     <div class="spacer"></div>
-    <div class="chip" id="date"></div>
+    <div class="chip" id="date-chip"></div>
     <div class="chip" id="budget">API ···</div>
   </div>
   <nav>
-    <div class="tab on" data-v="soccer">⚽ Mundial · Hoy</div>
-    <div class="tab" data-v="mlb">⚾ MLB · Hoy</div>
+    <div class="tab on" data-v="soccer">⚽ Mundial</div>
+    <div class="tab" data-v="track">📊 Track Record</div>
+    <div class="tab" data-v="edge">⚡ Edge Feed</div>
+    <div class="tab" data-v="ticket">🎟️ Mi Ticket</div>
+    <div class="tab" data-v="cartera">💰 Cartera</div>
+    <div class="tab" data-v="mlb">⚾ MLB</div>
   </nav>
 </header>
 
 <main id="view"></main>
 <footer>
-  Cada fila = un partido. Tocá para ver el cuadro, los picks confiables y la lectura de contexto.<br>
-  Probabilidades de un modelo puramente estadístico, sin cuotas. “Calibrada” = tras recalibrador. Educativo. La varianza es real.
+  Modelo estadístico calibrado (soccer-v3 · Brier ~0.20 · ECE ~0.04). Probabilidades sin cuotas. Edge = modelo vs ESPN de-vigeado.<br>
+  Educativo / entretenimiento. La varianza es real. Solo arriesgá lo que podés perder.
 </footer>
 
 <script>
-const V = document.getElementById("view");
-const d = new Date(), DATE = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-document.getElementById("date").textContent = DATE;
-let TAB = "soccer";
+// ── Setup ─────────────────────────────────────────────────────────────────────
+Chart.defaults.color = '#8a90a0';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.07)';
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+Chart.defaults.font.size = 11;
+
+const V    = document.getElementById("view");
+const d0   = new Date();
+const DATE = `${d0.getFullYear()}-${String(d0.getMonth()+1).padStart(2,"0")}-${String(d0.getDate()).padStart(2,"0")}`;
+document.getElementById("date-chip").textContent = DATE;
+
+let TAB  = "soccer";
+let POTE = 10;
 const MEM = {};
+let TLEGS = [{match:"",market:"1x2",pick:"",cuota:""}];
+let TKIND = "combinada";
+let TSLATE = [];
+let CHART_CALIB = null;
+let CHART_ROI   = null;
 
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   TAB = t.dataset.v;
@@ -167,18 +300,27 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   render();
 });
 
-function skeletons(){ V.innerHTML = `<div class="list">${'<div class="skel"></div>'.repeat(4)}</div>`; }
+// ── Utilidades ────────────────────────────────────────────────────────────────
+function skeletons(){ V.innerHTML = `<div class="list">${'<div class="skel"></div>'.repeat(5)}</div>`; }
 const pct = x => Math.round(x*100) + "%";
 const esc = s => (s==null?"":String(s)).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
 async function load(tab){
   if(MEM[tab]) return MEM[tab];
-  const url = tab==="mlb" ? `/api/mlb/today?date=${DATE}` : `/api/wc/today?date=${DATE}`;
+  const urls = {
+    mlb:     `/api/mlb/today?date=${DATE}`,
+    cartera: `/api/cartera?date=${DATE}`,
+    soccer:  `/api/wc/today?date=${DATE}`,
+    track:   `/api/track-record`,
+    history: `/api/history?days=14`,
+    edge:    `/api/edge/today?date=${DATE}`,
+  };
+  const url = urls[tab]; if(!url) return {};
   MEM[tab] = await (await fetch(url)).json();
   return MEM[tab];
 }
 
-/* ---------- MLB (legacy) ---------- */
+// ── MLB (legacy) ──────────────────────────────────────────────────────────────
 function cardHTML(g){
   const logros = (g.logros||[]).map(l => `<div class="logro">
       <span class="lm">${esc(l.market)}</span><span class="lp">${esc(l.pick)}</span>
@@ -192,8 +334,14 @@ function cardHTML(g){
     <div class="logros">${logros}</div>
     ${an ? `<ul class="pins">${an}</ul>` : ""}</div>`;
 }
+function renderMLB(data){
+  if(data.error) return V.innerHTML = `<div class="empty">Error: ${esc(data.error)}</div>`;
+  const c = data.cards||[];
+  if(!c.length) return V.innerHTML = `<div class="empty"><b>Sin partidos MLB por analizar hoy.</b></div>`;
+  V.innerHTML = `<div class="note">${esc(data.note||"")}</div><div class="list">${c.map(cardHTML).join("")}</div>`;
+}
 
-/* ---------- Mundial ---------- */
+// ── Mundial ───────────────────────────────────────────────────────────────────
 const flagImg = (url,code) => url
   ? `<img class="flag" src="${url}" alt="${esc(code)}" loading="lazy" onerror="this.style.visibility='hidden'">`
   : `<span class="flag" style="display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--faint)">${esc(code)}</span>`;
@@ -204,53 +352,35 @@ function mrow(label, prob, cal){
     ${cal!=null?`<span class="mc">cal ${pct(cal)}</span>`:""}
     <span class="mv lvl-${lvl} num">${pct(prob)}</span></div>`;
 }
-
 function cuadroHTML(a){
   const res = a.resultado.map(r => mrow(r.label, r.prob, r.cal)).join("");
-  const dob = mrow("1X — "+a.home+" o empate", a.doble["1X"]) + mrow("X2 — "+a.away+" o empate", a.doble["X2"]) + mrow("12 — sin empate", a.doble["12"]);
+  const dob = mrow("1X — "+a.home+" o empate", a.doble["1X"])
+            + mrow("X2 — "+a.away+" o empate", a.doble["X2"])
+            + mrow("12 — sin empate", a.doble["12"]);
   const g = a.goles;
-  const gol = mrow("Over 1.5", g.over15)+mrow("Over 2.5", g.over25)+mrow("Over 3.5", g.over35)+mrow("Ambos marcan (BTTS)", g.btts);
-  const val = mrow("Valla invicta "+a.home, a.valla.home)+mrow("Valla invicta "+a.away, a.valla.away);
-  const cor = a.corners ? `<div class="sec"><h4>Córners · esperados ${a.corners.exp}</h4>${mrow("Over 8.5", a.corners.o85)+mrow("Over 9.5", a.corners.o95)+mrow("Over 10.5", a.corners.o105)}</div>` : "";
-  const car = a.cards ? `<div class="sec"><h4>Tarjetas amarillas · esperadas ${a.cards.exp}</h4>${mrow("Over 3.5", a.cards.o35)+mrow("Over 4.5", a.cards.o45)}<div class="warn">⚠ el modelo tiende a SOBREESTIMAR tarjetas — leer con humildad</div></div>` : "";
+  const gol = mrow("Over 1.5",g.over15)+mrow("Over 2.5",g.over25)+mrow("Over 3.5",g.over35)+mrow("Ambos marcan (BTTS)",g.btts);
+  const val = mrow("Valla invicta "+a.home,a.valla.home)+mrow("Valla invicta "+a.away,a.valla.away);
+  const cor = a.corners ? `<div class="sec"><h4>Corners · esperados ${a.corners.exp}</h4>
+    ${mrow("Over 8.5",a.corners.o85)+mrow("Over 9.5",a.corners.o95)+mrow("Over 10.5",a.corners.o105)}</div>` : "";
+  const car = a.cards ? `<div class="sec"><h4>Tarjetas amarillas · esperadas ${a.cards.exp}</h4>
+    ${mrow("Over 3.5",a.cards.o35)+mrow("Over 4.5",a.cards.o45)}
+    <div class="warn">El modelo tiende a sobreestimar tarjetas — leer con humildad</div></div>` : "";
   return `<div class="sec"><h4>Resultado 1X2 (cruda / calibrada)</h4>${res}</div>
     <div class="sec"><h4>Doble oportunidad</h4>${dob}</div>
     <div class="sec"><h4>Goles</h4>${gol}</div>
     <div class="sec"><h4>Valla invicta</h4>${val}</div>${cor}${car}`;
 }
-
 function picksHTML(a){
   if(!a.picks||!a.picks.length) return "";
   const ps = a.picks.map(p => `<div class="pick"><span class="pm">${esc(p.market)}</span>
     <span class="pp">${esc(p.pick)}</span><span class="mv lvl-${p.level} num">${pct(p.prob)}</span></div>`).join("");
   return `<div class="sec"><h4>Picks confiables</h4>${ps}</div>`;
 }
-
-function linemateHTML(a){
-  if(!a.linemate||!a.linemate.length) return "";
-  const tr = a.linemate.map(t => `<div class="lmtr"><span class="w">${esc(t.who)}</span>
-    <span>${esc(t.market)} ${esc(t.side)}${t.line}</span>
-    <span class="hr">L10 ${t.l10!=null?t.l10+"%":"-"} · año ${t.season!=null?t.season+"%":"-"}</span></div>`).join("");
-  return `<div class="sec"><h4>Validación cruzada · Linemate (hit-rates, contexto)</h4>${tr}</div>`;
-}
-
-function lecturaHTML(c){
-  const L = c.lectura;
-  if(!L) return `<div class="sec"><h4>Lectura · contexto en vivo</h4>
-    <div class="pend">Lectura no precomputada para este partido todavía. El cuadro y los picks salen del modelo;
-    la lectura de contexto (lesiones / XI / racha) se agrega cuando se corre el análisis en vivo.</div></div>`;
-  const sum = L.summary ? `<p class="sum">${esc(L.summary)}</p>` : "";
-  const ctx = (L.context||[]).length ? `<ul>${L.context.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
-  const src = (L.sources||[]).length ? `<div class="src">Fuentes: ${L.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join("")}</div>` : "";
-  return `<div class="sec lect"><h4>Lectura · contexto en vivo</h4>${sum}${ctx}${src}</div>`;
-}
-
 function edgeHTML(c){
-  const e = c.edge;
-  if(!e || !e.rows) return "";
+  const e = c.edge; if(!e||!e.rows) return "";
   const tc = {FUERTE:"t-fuerte",MODERADO:"t-mod",BAJO:"t-bajo",PASAR:"t-pasar","NO-APTO":"t-pasar",SOSPECHOSO:"t-susp"};
   const rows = e.rows.map(r => {
-    const eg = (r.edge>=0?"+":"") + (Math.round(r.edge*1000)/10) + "%";
+    const eg = (r.edge>=0?"+":"")+(Math.round(r.edge*1000)/10)+"%";
     const stake = (r.tier==="FUERTE"||r.tier==="MODERADO"||r.tier==="BAJO") ? " $"+r.amount : "";
     return `<div class="erow"><span class="el">${esc(r.label)}</span>
       <span class="em">modelo ${pct(r.p_model)} · mercado ${pct(r.p_market)} · cuota ${r.odds.toFixed(2)}</span>
@@ -258,30 +388,66 @@ function edgeHTML(c){
       <span class="et ${tc[r.tier]||'t-pasar'}">${esc(r.tier)}${stake}</span></div>`;
   }).join("");
   return `<div class="sec"><h4>Valor vs mercado · ${esc(e.provider)} (de-vigeada)</h4>${rows}
-    <div class="warn">Cuota = benchmark, nunca feature. SOSPECHOSO = edge enorme vs book líquido = probable error del modelo.</div></div>`;
+    <div class="warn">SOSPECHOSO = edge enorme vs book liquido = probable error del modelo, no value real.</div></div>`;
 }
-
 function xiHTML(a){
-  const av = a.availability;
-  if(!av || (!av.home && !av.away)) return "";
+  const av = a.availability; if(!av||(!av.home&&!av.away)) return "";
   const t = (x,name) => x ? `<div class="xit"><b>${esc(name)}</b><span class="xif">${esc(x.formation||"")}</span>
     <div class="xip">${(x.starters||[]).map(p=>esc(p.name)).join(", ")}</div></div>` : "";
   return `<div class="sec"><h4>XI confirmado · ESPN</h4>${t(av.home,a.home)}${t(av.away,a.away)}</div>`;
 }
-
+function linemateHTML(a){
+  if(!a.linemate||!a.linemate.length) return "";
+  const tr = a.linemate.map(t => `<div class="lmtr"><span class="w">${esc(t.who)}</span>
+    <span>${esc(t.market)} ${esc(t.side)}${t.line}</span>
+    <span class="hr">L10 ${t.l10!=null?t.l10+"%":"-"} · año ${t.season!=null?t.season+"%":"-"}</span></div>`).join("");
+  return `<div class="sec"><h4>Validacion cruzada · Linemate (hit-rates)</h4>${tr}</div>`;
+}
+function lecturaHTML(c){
+  const L = c.lectura;
+  if(!L) return `<div class="sec"><h4>Lectura · contexto en vivo</h4>
+    <div class="pend">Lectura no precomputada para este partido.</div></div>`;
+  const sum = L.summary ? `<p class="sum">${esc(L.summary)}</p>` : "";
+  const ctx = (L.context||[]).length ? `<ul>${L.context.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const src = (L.sources||[]).length ? `<div class="src">Fuentes: ${L.sources.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join("")}</div>` : "";
+  return `<div class="sec lect"><h4>Lectura · contexto en vivo</h4>${sum}${ctx}${src}</div>`;
+}
+function panoramaRow(p){
+  const rdClass = r => r.includes("alto")?"hot":r.includes("buena")?"warm":r.includes("bajo")?"cold":"mid";
+  const hr = [p.l5!=null?`L5 ${p.l5}%`:null,p.l10!=null?`L10 ${p.l10}%`:null,p.season!=null?`año ${p.season}%`:null].filter(Boolean).join(" · ");
+  const rd = p.read ? `<span class="pnread rd-${rdClass(p.read)}">${esc(p.read)}</span>` : "";
+  return `<div class="pnrow"><span class="pnwho">${esc(p.who)}</span>
+    <span class="pnmkt">${p.over?'+':'−'}${p.line} ${esc(p.market)}</span>${rd}<span class="pnhr">${hr}</span></div>`;
+}
+function playersSection(c,a){
+  const ps = a.panorama; if(!ps||!ps.length) return "";
+  const norm = x => (x||"").toUpperCase();
+  const group = code => norm(code)?ps.filter(p=>norm(p.team)===norm(code)):[];
+  const home = group(c.home_code), away = group(c.away_code);
+  const taken = new Set([...home,...away]);
+  const others = ps.filter(p=>!taken.has(p));
+  const block = (flag,code,name,list) => list.length
+    ? `<div class="pteam"><div class="pteamh">${flagImg(flag,code)} ${esc(name)}</div>${list.map(panoramaRow).join("")}</div>` : "";
+  return `<div class="macro">Players <span>· props por jugador (recomendacion)</span></div>
+    ${block(c.home_flag,c.home_code,c.home,home)}${block(c.away_flag,c.away_code,c.away,away)}
+    ${others.length?`<div class="pteam"><div class="pteamh">Otros</div>${others.map(panoramaRow).join("")}</div>`:""}
+    <div class="warn">Forma reciente de club via Linemate. La seleccion puede cambiarle el rol.</div>`;
+}
 function wcRowHTML(c){
   const a = c.analysis;
   let head;
   if(a){
-    const fav = a.resultado.reduce((m,r)=> r.cal>m.cal?r:m);
+    const fav = a.resultado.reduce((m,r)=>r.cal>m.cal?r:m);
     const lvl = fav.cal>=.65?"ALTA":fav.cal>=.55?"MEDIA":"BAJA";
     head = `<span class="headprob lvl-${lvl} num" title="${esc(fav.label)}">${pct(fav.cal)}</span>`;
   } else {
     head = `<span class="headprob lvl-BAJA">s/d</span>`;
   }
   const body = a
-    ? edgeHTML(c)+picksHTML(a)+cuadroHTML(a)+xiHTML(a)+linemateHTML(a)+lecturaHTML(c)
-    : `<div class="sec"><div class="pend">Análisis no disponible (${esc(c.analysis_error||"sin datos")}). ${lecturaHTML(c)}</div></div>`;
+    ? `<div class="macro">Team <span>· mercados de equipo</span></div>${edgeHTML(c)}${picksHTML(a)}${cuadroHTML(a)}`
+      + playersSection(c,a)
+      + (()=>{ const inner=xiHTML(a)+linemateHTML(a)+lecturaHTML(c); return inner?`<div class="macro dim">Contexto</div>${inner}`:""; })()
+    : `<div class="sec"><div class="pend">Analisis no disponible (${esc(c.analysis_error||"sin datos")}). ${lecturaHTML(c)}</div></div>`;
   return `<div class="wcrow" style="--cat:${c.cat}">
     <div class="wchead" onclick="this.parentNode.classList.toggle('open')">
       <span class="wctime">${esc(c.time)}</span>
@@ -295,32 +461,339 @@ function wcRowHTML(c){
     <div class="wcbody">${body}</div>
   </div>`;
 }
-
 function renderWC(data){
   if(data.error) return V.innerHTML = `<div class="empty">Error: ${esc(data.error)}</div>`;
   const c = data.cards||[];
-  if(!c.length) return V.innerHTML = `<div class="empty"><b>Sin partidos del Mundial hoy.</b><br>(en hora argentina)</div>`;
+  if(!c.length) return V.innerHTML = `<div class="empty"><b>Sin partidos del Mundial hoy.</b></div>`;
   V.innerHTML = `<div class="note">${esc(data.note||"")}</div><div class="list">${c.map(wcRowHTML).join("")}</div>`;
 }
 
-function renderMLB(data){
-  if(data.error) return V.innerHTML = `<div class="empty">Error: ${esc(data.error)}</div>`;
-  const c = data.cards||[];
-  if(!c.length) return V.innerHTML = `<div class="empty"><b>Sin partidos MLB por analizar hoy.</b></div>`;
-  V.innerHTML = `<div class="note">${esc(data.note||"")}</div><div class="list">${c.map(cardHTML).join("")}</div>`;
+// ── Track Record ──────────────────────────────────────────────────────────────
+function gameRowHTML(g){
+  const picks = (g.picks||[]).map(p => `
+    <div class="hist-pick">
+      <div class="hist-out ${p.outcome?"out-win":"out-loss"}">${p.outcome?"✓":"✗"}</div>
+      <span class="hist-lab">${esc(p.label)}</span>
+      <span class="hist-prob">${Math.round(p.prob*100)}%</span>
+    </div>`).join("");
+  return `<div class="hist-game">
+    <div class="hist-hd">
+      <span class="hist-match">${esc(g.home)} vs ${esc(g.away)}</span>
+      <span class="hist-date">${esc(g.date)}</span>
+      ${g.result?`<span class="hist-res">${esc(g.result)}</span>`:""}
+    </div>${picks}</div>`;
 }
 
+async function renderTrack(){
+  skeletons();
+  let d, h;
+  try { [d,h] = await Promise.all([load("track"), load("history")]); }
+  catch(e){ V.innerHTML = `<div class="empty">Error cargando datos.</div>`; return; }
+
+  if(CHART_CALIB){ CHART_CALIB.destroy(); CHART_CALIB=null; }
+  if(CHART_ROI  ){ CHART_ROI.destroy();   CHART_ROI=null;   }
+
+  const calib = d.calibration||{}, byMkt = d.by_market||{}, roi = d.roi||{};
+  const games  = (h.games||[]).slice(0,20);
+
+  const brier = calib.brier!=null ? calib.brier.toFixed(4) : "—";
+  const ece   = calib.ece  !=null ? calib.ece.toFixed(4)   : "—";
+  const acc   = calib.acc  !=null ? (calib.acc*100).toFixed(1)+"%" : "—";
+  const n     = calib.n    ||0;
+
+  const mktRows = Object.entries(byMkt).map(([k,v]) =>
+    `<tr><td>${k}</td><td class="num">${v.n}</td>
+     <td class="num">${v.brier.toFixed(4)}</td>
+     <td class="num">${(v.acc*100).toFixed(1)}%</td></tr>`).join("");
+
+  const roiBlock = (roi.total&&roi.total.n) ? `
+    <div class="chart-box">
+      <h4>PnL por tier · ${roi.total.n} apuestas rastreadas · win rate total ${roi.total.win_rate!=null?(roi.total.win_rate*100).toFixed(0)+"%":"—"}</h4>
+      <canvas id="chartRoi" height="130"></canvas>
+      <div class="warn" style="margin-top:10px">PnL flat = $1 por apuesta sin staking. Pocos datos (n=${roi.total.n}) — no extrapolable.</div>
+    </div>` : "";
+
+  V.innerHTML = `
+    <div class="note">Calibración del modelo soccer-v3 sobre ${n} predicciones evaluadas. Brier ideal = 0; ECE ideal = 0.</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="sval">${brier}</div><div class="slab">Brier Score</div></div>
+      <div class="stat-box"><div class="sval">${ece}</div><div class="slab">ECE</div></div>
+      <div class="stat-box"><div class="sval">${acc}</div><div class="slab">Accuracy</div></div>
+      <div class="stat-box"><div class="sval num">${n}</div><div class="slab">Predicciones</div></div>
+    </div>
+    <div class="chart-box">
+      <h4>Reliability Diagram · probabilidad predicha vs tasa real por decil</h4>
+      <canvas id="chartCalib" height="240"></canvas>
+    </div>
+    <div class="chart-box">
+      <h4>Por familia de mercado</h4>
+      <table class="mkt-tbl">
+        <tr><th>Mercado</th><th>N</th><th>Brier</th><th>Accuracy</th></tr>
+        ${mktRows}
+      </table>
+    </div>
+    ${roiBlock}
+    <div class="sec"><h4>Ultimos resultados · ${games.length} partidos evaluados</h4>
+      ${games.length ? games.map(gameRowHTML).join("") : "<div class='empty'>Sin resultados cargados.</div>"}
+    </div>`;
+
+  // Chart 1: Reliability diagram
+  const buckets = (calib.buckets||[]).filter(b=>b.n>0);
+  const ctx1 = document.getElementById("chartCalib");
+  if(ctx1&&buckets.length){
+    CHART_CALIB = new Chart(ctx1, {
+      type:"scatter",
+      data:{ datasets:[
+        { label:"Modelo", type:"scatter",
+          data: buckets.map(b=>({x:Math.round(b.avg_prob*1000)/10, y:Math.round(b.actual_rate*1000)/10})),
+          backgroundColor:"#5eead4", borderColor:"#5eead4", pointRadius:7, pointHoverRadius:10 },
+        { label:"Calibracion perfecta", type:"line",
+          data:[{x:0,y:0},{x:100,y:100}],
+          borderColor:"rgba(255,255,255,.15)", borderDash:[6,4], pointRadius:0, fill:false }
+      ]},
+      options:{ responsive:true,
+        plugins:{ legend:{display:false},
+          tooltip:{ callbacks:{ label: ctx => ctx.datasetIndex===0
+            ? `Pred: ${ctx.raw.x}% → Real: ${ctx.raw.y}% (n=${buckets[ctx.dataIndex]?.n||"?"})` : null }}},
+        scales:{
+          x:{min:0,max:100,title:{display:true,text:"Prob. predicha (%)"},grid:{color:"rgba(255,255,255,.05)"}},
+          y:{min:0,max:100,title:{display:true,text:"Tasa real (%)"},    grid:{color:"rgba(255,255,255,.05)"}}}}
+    });
+  }
+
+  // Chart 2: ROI por tier
+  const ctx2 = document.getElementById("chartRoi");
+  if(ctx2&&roi.tiers&&Object.keys(roi.tiers).length){
+    const labels = Object.keys(roi.tiers);
+    const vals   = labels.map(k=>roi.tiers[k].pnl_flat);
+    CHART_ROI = new Chart(ctx2, {
+      type:"bar",
+      data:{ labels, datasets:[{
+        data:vals,
+        backgroundColor: vals.map(v=>v>=0?"rgba(94,234,212,.65)":"rgba(248,113,113,.55)"),
+        borderRadius:5
+      }]},
+      options:{ responsive:true,
+        plugins:{ legend:{display:false} },
+        scales:{
+          x:{grid:{color:"rgba(255,255,255,.05)"}},
+          y:{grid:{color:"rgba(255,255,255,.05)"},title:{display:true,text:"PnL flat ($)"}}}}
+    });
+  }
+}
+
+// ── Edge Feed ─────────────────────────────────────────────────────────────────
+async function renderEdgeFeed(){
+  skeletons();
+  let d;
+  try { d = await load("edge"); } catch(e){ V.innerHTML=`<div class="empty">Error cargando edge.</div>`; return; }
+  const rows = d.rows||[];
+  if(!rows.length){
+    V.innerHTML = `<div class="empty"><b>Sin datos de edge para hoy.</b><br>
+      El edge se calcula cuando hay cuotas ESPN disponibles para los partidos del dia.</div>`;
+    return;
+  }
+  const TIER_CLS = {FUERTE:"ef-tier-f",MODERADO:"ef-tier-m",BAJO:"ef-tier-b",PASAR:"ef-tier-p"};
+  const TIER_LAB = {FUERTE:"FUERTE",MODERADO:"MOD",BAJO:"BAJO",PASAR:"pass","NO-APTO":"—",SOSPECHOSO:"SUSP"};
+
+  const cards = rows.map(r => {
+    const mkts = (r.markets||[]).map(m => {
+      const hasEdge = m.tier!=="PASAR" && m.tier!=="NO-APTO";
+      const isSusp  = m.tier==="SOSPECHOSO";
+      const eg = (m.edge>=0?"+":"")+(Math.round(m.edge*1000)/10)+"%";
+      const valCls  = isSusp?"ef-susp":hasEdge?"ef-pos":"ef-pass";
+      const tierCls = TIER_CLS[m.tier]||"ef-tier-p";
+      return `<div class="ef-mkt${hasEdge?" has-edge":""}">
+        <span class="ef-mkt-name">${esc(m.label)}</span>
+        <span class="ef-mkt-val ${valCls}">${hasEdge?eg:"—"}</span>
+        <span class="ef-mkt-tier ${tierCls}">${TIER_LAB[m.tier]||""}</span>
+      </div>`;
+    }).join("");
+    return `<div class="ef-row">
+      <div class="ef-match">
+        <span class="ef-time">${esc(r.time||"")}</span>
+        <span class="ef-teams">${flagImg(r.home_flag,"")} ${esc(r.home)} <span style="color:var(--faint);font-weight:500">vs</span> ${flagImg(r.away_flag,"")} ${esc(r.away)}</span>
+        <span class="ef-prov">${esc(r.provider||"ESPN")}</span>
+      </div>
+      <div class="ef-markets">${mkts}</div>
+    </div>`;
+  }).join("");
+
+  V.innerHTML = `
+    <div class="note">Edge = modelo calibrado vs cuota ESPN de-vigeada. Ordenado por edge maximo. Solo partidos con cuota disponible.</div>
+    ${cards}
+    <div class="warn" style="margin-top:16px">SUSP = edge >20% vs book liquido: probable error del modelo, no value real. La cuota es el ancla sharp.</div>`;
+}
+
+// ── Cartera ───────────────────────────────────────────────────────────────────
+function paintCartera(data){
+  const box = document.getElementById("cartlist"); if(!box) return;
+  let deployed=0;
+  const tickets = (data.tickets||[]).map((t,idx) => {
+    const amt=t.share*POTE; deployed+=amt; const shown=amt>=0.005;
+    const legs = t.legs.map(l => `<div class="tleg">
+        <span class="tlg">${esc(l.game)}</span>
+        <span class="tlm">${esc(l.market)}: <b>${esc(l.pick)}</b></span>
+        <span class="tlp lvl-${l.level} num">${pct(l.prob)}</span></div>`).join("");
+    return `<div class="ticket">
+      <div class="thead"><span class="tnum">TICKET ${idx+1}</span>
+        <span class="tmeta">${t.n} ${t.n===1?"pierna":"piernas"} · ${esc(t.leg_level)} · conjunta <b>${pct(t.joint_prob)}</b></span>
+        <span class="tamt${shown?"":" zero"}">${shown?"$"+amt.toFixed(2):"—"}</span></div>
+      ${legs}</div>`;
+  }).join("");
+  box.innerHTML = `
+    <div class="sec"><h4>Tickets armados · reparto de tus $${POTE.toFixed(2)}</h4>${tickets}
+      <div class="ctot"><span>Total desplegado</span><b>$${deployed.toFixed(2)}</b></div></div>
+    <div class="warn" style="margin-top:14px">Por confianza del modelo, no chequeado contra cuota. Combinar no garantiza valor.</div>`;
+}
+function renderCartera(data){
+  if(data.error) return V.innerHTML=`<div class="empty">Error: ${esc(data.error)}</div>`;
+  if(!data.tickets||!data.tickets.length)
+    return V.innerHTML=`<div class="note">${esc(data.note||"")}</div>
+      <div class="empty"><b>Sin picks confiables para armar tickets hoy.</b></div>`;
+  V.innerHTML=`<div class="note">${esc(data.note||"")}</div>
+    <div class="potewrap"><label>Cuanto queres jugar hoy?</label><span class="cur">$</span>
+      <input id="pote" class="poteinput" type="number" min="0" step="1" value="${POTE}" inputmode="decimal"></div>
+    <div id="cartlist"></div>`;
+  const inp=document.getElementById("pote");
+  inp.oninput=()=>{ POTE=Math.max(0,parseFloat(inp.value)||0); paintCartera(data); };
+  paintCartera(data);
+}
+
+// ── Mi Ticket ─────────────────────────────────────────────────────────────────
+const MARKETS={"1x2":"Resultado (1X2)","dc":"Doble oportunidad","over":"Goles O/U",
+  "btts":"Ambos marcan","cs":"Valla en cero","corners":"Corners"};
+function pickOpts(market,match){
+  const [home,away]=(match||" vs ").split(" vs ");
+  switch(market){
+    case "1x2": return [["home","Gana "+home],["draw","Empate"],["away","Gana "+away]];
+    case "dc":  return [["1x",home+" o empate"],["x2",away+" o empate"],["12","Sin empate"]];
+    case "over": return [["over1.5","Over 1.5"],["under1.5","Under 1.5"],["over2.5","Over 2.5"],
+                         ["under2.5","Under 2.5"],["over3.5","Over 3.5"],["under3.5","Under 3.5"]];
+    case "btts": return [["yes","Ambos marcan"],["no","No ambos"]];
+    case "cs":   return [["home",home+" valla en cero"],["away",away+" valla en cero"]];
+    case "corners": return [["o8.5","Over 8.5 corners"]];
+    default: return [];
+  }
+}
+const tierClass = t => "t-"+(t||"").split(/[ -]/)[0];
+
+function renderTicket(slate){
+  TSLATE=(slate&&slate.cards)?slate.cards.map(c=>`${c.home} vs ${c.away}`):[];
+  V.innerHTML=`
+    <div class="note">Carga tu ticket: partido + mercado + seleccion + <b>la cuota que te estan dando ahora</b>. El modelo lo audita (prob calibrada vs tu cuota) y redacta una lectura.</div>
+    <div class="tkbar">
+      <label>Tipo</label>
+      <select id="tkind" class="tksel">
+        <option value="combinada">Combinada</option>
+        <option value="simples">Apuestas simples</option></select>
+      <span style="flex:1"></span>
+      <button class="tkbtn" id="tkadd">+ Agregar pierna</button>
+    </div>
+    <div class="sec"><h4>Piernas del ticket</h4><div id="tklegs"></div></div>
+    <div style="display:flex;gap:10px;margin:12px 0">
+      <button class="tkbtn tkgo" id="tkgo">Analizar</button>
+      <button class="tkbtn" id="tkclear">Limpiar</button></div>
+    <div id="tkout"></div>`;
+  const ki=document.getElementById("tkind");
+  ki.value=TKIND; ki.onchange=e=>TKIND=e.target.value;
+  document.getElementById("tkadd").onclick=()=>{ TLEGS.push({match:"",market:"1x2",pick:"",cuota:""}); paintLegs(); };
+  document.getElementById("tkclear").onclick=()=>{ TLEGS=[{match:"",market:"1x2",pick:"",cuota:""}]; document.getElementById("tkout").innerHTML=""; paintLegs(); };
+  document.getElementById("tkgo").onclick=analyzeTicket;
+  paintLegs();
+}
+function paintLegs(){
+  const box=document.getElementById("tklegs"); if(!box) return;
+  const opt=(val,sel,lab)=>`<option value="${esc(val)}"${val===sel?" selected":""}>${esc(lab)}</option>`;
+  box.innerHTML=TLEGS.map((l,i)=>{
+    const matches=`<option value="">— partido —</option>`+TSLATE.map(g=>opt(g,l.match,g)).join("");
+    const mkts=Object.entries(MARKETS).map(([k,v])=>opt(k,l.market,v)).join("");
+    const picks=`<option value="">— seleccion —</option>`+pickOpts(l.market,l.match).map(([k,v])=>opt(k,l.pick,v)).join("");
+    return `<div class="tkrow">
+      <select class="tksel tkmatch" data-i="${i}" data-f="match">${matches}</select>
+      <select class="tksel tkmkt" data-i="${i}" data-f="market">${mkts}</select>
+      <select class="tksel tkpick" data-i="${i}" data-f="pick">${picks}</select>
+      <input class="tkin tkcuota" data-i="${i}" data-f="cuota" type="number" step="0.01" min="1.01" placeholder="cuota" value="${esc(l.cuota)}">
+      <span class="tkx" data-i="${i}" title="quitar">x</span></div>`;
+  }).join("");
+  box.querySelectorAll("select,input").forEach(el=>{
+    const h=e=>{ const i=+e.target.dataset.i,f=e.target.dataset.f; TLEGS[i][f]=e.target.value;
+      if(f==="market"||f==="match"){ TLEGS[i].pick=""; paintLegs(); }};
+    el.onchange=h; if(el.tagName==="INPUT") el.oninput=h;
+  });
+  box.querySelectorAll(".tkx").forEach(x=>x.onclick=e=>{
+    TLEGS.splice(+e.target.dataset.i,1);
+    if(!TLEGS.length) TLEGS=[{match:"",market:"1x2",pick:"",cuota:""}];
+    paintLegs();
+  });
+}
+async function analyzeTicket(){
+  const legs=TLEGS.filter(l=>l.match&&l.market&&l.pick&&parseFloat(l.cuota)>1).map(l=>({
+    match:l.match,market:l.market,pick:l.pick,cuota:parseFloat(l.cuota),
+    label:(pickOpts(l.market,l.match).find(p=>p[0]===l.pick)||[null,l.pick])[1]}));
+  const out=document.getElementById("tkout");
+  if(!legs.length){ out.innerHTML=`<div class="empty">Completa al menos una pierna (partido + mercado + seleccion + cuota > 1).</div>`; return; }
+  const go=document.getElementById("tkgo"),old=go.textContent;
+  const body=JSON.stringify({date:DATE,kind:TKIND,legs});
+  go.disabled=true; go.textContent="Analizando…"; out.innerHTML=`<div class="tkspin">Auditando…</div>`;
+  try{
+    const r=await fetch("/api/ticket/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body});
+    const d=await r.json();
+    if(d.error){ out.innerHTML=`<div class="empty">Error: ${esc(d.error)}</div>`; go.disabled=false; go.textContent=old; return; }
+    paintQuant(d.quant||{});
+  }catch(e){ out.innerHTML=`<div class="empty">No se pudo analizar.</div>`; go.disabled=false; go.textContent=old; return; }
+  go.disabled=false; go.textContent=old;
+  try{
+    const r=await fetch("/api/ticket/lectura",{method:"POST",headers:{"Content-Type":"application/json"},body});
+    fillProse(await r.json());
+  }catch(e){ fillProse({prose:"No se pudo generar la lectura. El veredicto de arriba es valido.",prose_source:"fallback"}); }
+}
+function paintQuant(q){
+  const out=document.getElementById("tkout");
+  const legs=(q.legs||[]).map(l=>`<div class="tkv">
+      <span class="tier ${tierClass(l.tier)}">${esc(l.tier)}</span>
+      <span class="vlab"><b>${esc(l.label)}</b> · ${esc(l.match)}</span>
+      <span class="vn">cuota ${l.cuota} · impl ${pct(l.implied)} · modelo ${l.model_prob!=null?pct(l.model_prob):"s/d"}</span></div>
+    <div class="tknote">${esc(l.note)}</div>`).join("");
+  let combo="";
+  if(q.combo){ const c=q.combo;
+    combo=`<div class="tkcombo">Combinada · cuota total <b>${c.cuota_total}</b> · implicita ${pct(c.implied)} · modelo conjunto ${c.joint_prob!=null?pct(c.joint_prob):"s/d"} · edge ${c.edge!=null?pct(c.edge):"s/d"}<br>${esc(c.note)}</div>`; }
+  out.innerHTML=`<div class="sec"><h4>Veredicto por pierna</h4>${legs}</div>${combo}
+    <div class="tkprose" id="tkprose"><h4>Lectura en vivo</h4><div class="tkspin">Investigando… (~1-2 min)</div></div>`;
+}
+function fillProse(d){
+  const box=document.getElementById("tkprose"); if(!box) return;
+  const src=d.prose_source==="claude"?"Lectura en vivo":"Lectura automatica (sin investigacion en vivo)";
+  box.innerHTML=`<h4>${esc(src)}</h4>${esc(d.prose||"")}`;
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
 async function render(){
-  const draw = TAB==="mlb" ? renderMLB : renderWC;
-  if(MEM[TAB]){ draw(MEM[TAB]); }
-  else { skeletons(); try{ draw(await load(TAB)); }
-         catch(e){ V.innerHTML = `<div class="empty">No se pudo cargar. ¿El servidor está corriendo?</div>`; } }
-  const other = TAB==="mlb" ? "soccer" : "mlb";
-  if(!MEM[other]) load(other).catch(()=>{});
+  const err = `<div class="empty">No se pudo cargar. El servidor esta iniciando (30s cold start en free tier).</div>`;
+  if(TAB==="mlb"){
+    if(MEM.mlb) renderMLB(MEM.mlb);
+    else{ skeletons(); try{ renderMLB(await load("mlb")); }catch(){ V.innerHTML=err; } }
+  } else if(TAB==="cartera"){
+    if(MEM.cartera) renderCartera(MEM.cartera);
+    else{ skeletons(); try{ renderCartera(await load("cartera")); }catch(){ V.innerHTML=err; } }
+  } else if(TAB==="ticket"){
+    const slate = MEM.soccer || await load("soccer").catch(()=>({}));
+    renderTicket(slate);
+  } else if(TAB==="track"){
+    await renderTrack();
+  } else if(TAB==="edge"){
+    await renderEdgeFeed();
+  } else {
+    if(MEM.soccer) renderWC(MEM.soccer);
+    else{ skeletons(); try{ renderWC(await load("soccer")); }catch(){ V.innerHTML=err; } }
+  }
+  // prefetch silencioso del tab principal para que Mi Ticket tenga la lista de partidos
+  if(TAB!=="soccer"&&!MEM.soccer) load("soccer").catch(()=>{});
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 fetch("/api/budget").then(r=>r.json()).then(b=>{
-  if(b && b.remaining!=null) document.getElementById("budget").innerHTML = `API <b>${b.remaining}/${b.limit}</b>`;
+  if(b&&b.remaining!=null) document.getElementById("budget").innerHTML=`API <b>${b.remaining}/${b.limit}</b>`;
 }).catch(()=>{});
 
 render();
