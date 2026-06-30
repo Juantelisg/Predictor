@@ -62,6 +62,14 @@ def _hitrate(records, line, split):
     return cell.get("hitRate") if cell.get("games") else None
 
 
+def _split_cell(records, line, split):
+    """Celda completa {games, hitRate, average} para una linea/split, o {}."""
+    rec = records.get(str(line)) or records.get(f"{float(line):g}") if records else None
+    if not rec:
+        return {}
+    return (rec.get(split) or {}).get("all") or {}
+
+
 def flatten(t):
     """Normaliza un trend al dato util: quien, que mercado/linea/lado y los hit-rates."""
     who = t.get("player", {}).get("fullName") if t.get("type") == "player" else t.get("team", {}).get("name")
@@ -69,10 +77,13 @@ def flatten(t):
     records = m.get("pregameHitRecords") or {}
     line = t.get("line")
     sig = next((s for s in (t.get("signals") or []) if s.get("summary")), None)
+    l5_cell = _split_cell(records, line, "LAST_5")
+    sea_cell = _split_cell(records, line, "SEASON")
     return {
         "game": t.get("gameId", ""),
         "type": t.get("type"),
         "who": who or "?",
+        "position": (t.get("player") or {}).get("position"),   # forward/midfielder/defender/goalkeeper
         "team": t.get("team", {}).get("code", ""),
         "opp": t.get("opposingTeam", {}).get("code", ""),
         "home": t.get("home"),
@@ -80,6 +91,9 @@ def flatten(t):
         "line": line,
         "side": t.get("outcome", ""),
         "splits": {s: _hitrate(records, line, s) for s in SPLITS},
+        "games_l5": l5_cell.get("games"),       # juegos reales en L5 (no slots vacíos)
+        "games_season": sea_cell.get("games"),   # juegos reales en temporada
+        "avg_l5": l5_cell.get("average"),        # promedio del stat en L5 (ej: 1.4 tiros/partido)
         "signal": sig.get("annotation") if sig else "",
         "signal_desc": sig.get("description") if sig else "",
     }

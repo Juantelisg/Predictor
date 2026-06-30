@@ -21,11 +21,17 @@ sys.path.insert(0, ROOT)
 from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
 import track, history
 
 app = FastAPI(title="Predictor")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Sirve el build de React (frontend/dist/). Fallback: si no existe el build, sigue funcionando sin él.
+DIST = os.path.join(ROOT, "..", "frontend", "dist")
+if os.path.isdir(os.path.join(DIST, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(DIST, "assets")), name="assets")
 MLB_CAT, SOC_CAT = "#5b9cff", "#5eead4"   # color de categoria (borde lateral)
 TTL = 600                                  # cache de resultados 10 min -> tabs instantaneos
 LECT_DIR = os.path.join(ROOT, "data", "lecturas")   # lecturas (contexto en vivo) precomputadas
@@ -68,7 +74,22 @@ def _load_lecturas(date):
 
 @app.get("/")
 def index():
+    react = os.path.join(DIST, "index.html")
+    if os.path.exists(react):
+        return FileResponse(react)
     return FileResponse(os.path.join(ROOT, "dashboard.html"))
+
+
+@app.get("/favicon.svg")
+def favicon():
+    f = os.path.join(DIST, "favicon.svg")
+    return FileResponse(f) if os.path.exists(f) else FileResponse(os.path.join(ROOT, "favicon.svg"), status_code=404)
+
+
+@app.get("/icons.svg")
+def icons():
+    f = os.path.join(DIST, "icons.svg")
+    return FileResponse(f) if os.path.exists(f) else FileResponse(os.path.join(ROOT, "icons.svg"), status_code=404)
 
 
 def _lvl(p):

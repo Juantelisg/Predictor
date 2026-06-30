@@ -38,22 +38,72 @@ MARKET_ES = {"SHOTS": "tiros", "SHOTS_ON_TARGET": "tiros al arco", "GOALS": "gol
              "CARDS": "tarjetas", "PASSES": "pases", "SAVES": "atajadas", "FOULS": "faltas",
              "GOAL": "goles", "ANYTIME_GOALSCORER": "gol en cualquier momento"}
 
+# posición → set de mercados relevantes para esa posición
+_POS_MARKETS = {
+    "forward":    {"GOALS", "SHOTS", "SHOTS_ON_TARGET", "GOAL_OR_ASSIST", "ASSISTS",
+                   "ANYTIME_GOALSCORER", "GOAL"},
+    "midfielder": {"SHOTS_ON_TARGET", "GOAL_OR_ASSIST", "ASSISTS", "PASSES",
+                   "KEY_PASSES", "TACKLES", "SHOTS"},
+    "defender":   {"TACKLES", "CLEARANCES", "CARDS", "GOALS", "GOAL_OR_ASSIST"},
+    "goalkeeper": {"SAVES", "GOALS_CONCEDED"},
+}
 
-def _panorama_read(side, recent, season):
-    """Lectura en criollo de la forma del jugador en ese mercado/lado. recent = L5 (o L10)."""
-    over = (side or "").lower().startswith("over")
-    r = recent if recent is not None else season
-    if r is None:
+
+def _market_ok_for_position(market_key, position):
+    """True si el mercado es relevante para esa posición. Sin posición: acepta todo."""
+    if not position:
+        return True
+    allowed = _POS_MARKETS.get(position.lower())
+    return allowed is None or market_key in allowed
+
+
+def _quality_ok(mk, side, line, l5, l10, games_l5, games_season, avg_l5):
+    """True si el prop pasa los filtros de calidad mínima."""
+    is_over = (side or "").lower().startswith("over")
+
+    # Necesitamos al menos 3 juegos reales en L5
+    if (games_l5 or 0) < 3:
+        return False
+
+    # UNDER trivial: el jugador nunca hace el stat → no es señal, es trivialidad
+    # (ej: CB con 0% SOT under 0.5 = trivialmente cierto, cero valor predictivo)
+    if not is_over and (line or 0) <= 0.5 and (l5 or 0) <= 15:
+        return False
+
+    # Gate de hit-rate para OVER: mínimo 60% en L5 (3 de 5 juegos)
+    if is_over:
+        if l5 is None:
+            return False
+        if l5 < 60:
+            # aceptar si L10 es fuerte y L5 está razonablemente arriba
+            if (l10 or 0) < 65 or l5 < 50:
+                return False
+
+    # Gate para UNDER: OVER hit-rate <= 35% en L5 (= UNDER ocurre >= 65%)
+    if not is_over:
+        if l5 is None:
+            return False
+        under_rate = 100 - l5
+        if under_rate < 65:
+            return False
+
+    return True
+
+
+def _panorama_read(l5, is_over):
+    """Etiqueta de forma. Strings sincronizados con ReadBadge del frontend (hot=alto/warm=buena/cold=bajo)."""
+    if l5 is None:
         return ""
-    if over:
-        return "rendimiento alto" if r >= 80 else "en buena forma" if r >= 60 else "irregular" if r >= 40 else "rendimiento bajo"
-    return "muy por debajo" if r <= 20 else "perfil discreto" if r <= 40 else "irregular"
+    if is_over:
+        return "rendimiento alto" if l5 >= 80 else "en buena forma" if l5 >= 65 else "forma regular"
+    under_rate = 100 - l5
+    return "muy constante" if under_rate >= 80 else "constante" if under_rate >= 65 else ""
 
 
 def _player_panorama(lm_codes, league):
-    """Panorama de jugadores del partido (RECOMENDACION, no obligatorio): props de Linemate con
-    forma reciente. Solo presentación — forma de CLUB, no calibrado ni chequeado contra cuota.
-    Ordenado por mejor forma primero. [] si no hay/falla."""
+    """Props de jugadores del partido filtrados por posición y calidad mínima.
+    Solo muestra señales con base estadística real: posición relevante, mínimo 3 juegos,
+    hit-rate significativo. [] si no hay datos o falla."""
     if not lm_codes:
         return []
     try:
@@ -61,18 +111,47 @@ def _player_panorama(lm_codes, league):
         rnd = lambda v: round(v) if isinstance(v, (int, float)) else None
         out = []
         for t in lm.game_trends(league, *lm_codes):
-            if t.get("type") != "player":            # los de equipo van a la validación cruzada
+            if t.get("type") != "player":
                 continue
-            sp = t.get("splits", {})
-            l5, l10, season = sp.get("LAST_5"), sp.get("LAST_10"), sp.get("SEASON")
             mk = (t.get("market") or "").upper()
-            out.append({"who": t["who"], "team": (t.get("team") or "").upper(),
-                        "market": MARKET_ES.get(mk, mk.replace("_", " ").lower()),
-                        "over": (t.get("side") or "").lower().startswith("over"), "line": t.get("line"),
-                        "l5": rnd(l5), "l10": rnd(l10), "season": rnd(season),
-                        "read": _panorama_read(t.get("side"), l5 if l5 is not None else l10, season),
-                        "signal": t.get("signal", "")})
-        out.sort(key=lambda r: (r["l5"] if r["l5"] is not None else (r["l10"] or 0)), reverse=True)
+            pos = t.get("position")
+            if not _market_ok_for_position(mk, pos):
+                continue
+
+            sp = t.get("splits", {})
+            l5 = sp.get("LAST_5")
+            l10 = sp.get("LAST_10")
+            season = sp.get("SEASON")
+            side = t.get("side") or ""
+            line = t.get("line")
+            games_l5 = t.get("games_l5")
+            games_season = t.get("games_season")
+            avg_l5 = t.get("avg_l5")
+
+            if not _quality_ok(mk, side, line, l5, l10, games_l5, games_season, avg_l5):
+                continue
+
+            is_over = side.lower().startswith("over")
+            # Score: pesa más L5, tiebreak por games_season (más muestra = más confiable)
+            score = (l5 or 0) * 0.6 + (l10 or l5 or 0) * 0.3 + min(games_season or 0, 20) * 0.5
+            out.append({
+                "who": t["who"],
+                "team": (t.get("team") or "").upper(),
+                "position": pos,
+                "market": MARKET_ES.get(mk, mk.replace("_", " ").lower()),
+                "over": is_over,
+                "side": side,
+                "line": line,
+                "l5": rnd(l5),
+                "l10": rnd(l10),
+                "season": rnd(season),
+                "games": games_l5,
+                "avg": round(avg_l5, 2) if avg_l5 is not None else None,
+                "read": _panorama_read(l5, is_over),
+                "signal": t.get("signal", ""),
+                "_score": score,
+            })
+        out.sort(key=lambda r: r.pop("_score"), reverse=True)
         return out
     except Exception:
         return []

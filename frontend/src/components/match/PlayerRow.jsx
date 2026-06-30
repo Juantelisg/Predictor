@@ -17,6 +17,7 @@ function ReadBadge({ read }) {
   const cls = read.includes('alto') ? styles.hot
     : read.includes('buena') ? styles.warm
     : read.includes('bajo') ? styles.cold
+    : read.includes('constante') ? styles.warm
     : styles.mid
   return <span className={`${styles.readBadge} ${cls}`}>{read}</span>
 }
