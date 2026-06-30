@@ -31,15 +31,26 @@ function EdgeRow({ r }) {
   )
 }
 
-function MktRow({ label, prob, cal }) {
+function MktRow({ label, prob, cal, pickLevel }) {
   const lvl = (cal ?? prob) >= 0.65 ? 'alta' : (cal ?? prob) >= 0.55 ? 'media' : 'baja'
   return (
-    <div className={styles.mktRow}>
+    <div className={`${styles.mktRow} ${pickLevel ? styles.isPick : ''}`}>
+      {pickLevel && <span className={styles.pickDot} />}
       <span className={styles.mktLab}>{label}</span>
       {cal != null && <span className={styles.mktCal}>cal {pct(cal)}</span>}
-      <Pill label={pct(cal ?? prob)} variant={lvl} />
+      <Pill label={pct(cal ?? prob)} variant={pickLevel?.toLowerCase() ?? lvl} />
     </div>
   )
+}
+
+// match pick label contra market label con tolerancia (ej: "Ambos marcan" vs "Ambos marcan (BTTS)")
+function pickLevel(label, pickMap) {
+  const exact = pickMap[label]
+  if (exact) return exact
+  for (const [k, v] of Object.entries(pickMap)) {
+    if (label.startsWith(k) || k.startsWith(label)) return v
+  }
+  return null
 }
 
 function SoccerTeamContent({ match, side }) {
@@ -47,27 +58,11 @@ function SoccerTeamContent({ match, side }) {
   const edge = match.edge
   if (!a) return <p className={styles.empty}>Sin análisis disponible.</p>
 
-  const isHome = side === 'home'
-  const teamName = isHome ? match.home : match.away
-
-  // picks filtrados por relevancia del equipo seleccionado
-  const allPicks = a.picks ?? []
+  // índice de picks: { "Local gana": "ALTA", "Over 2.5": "MEDIA", ... }
+  const pickMap = Object.fromEntries((a.picks ?? []).map(p => [p.pick, p.level]))
 
   return (
     <div className={styles.content}>
-      {allPicks.length > 0 && (
-        <section className={styles.sec}>
-          <h4 className={styles.secTitle}>Picks confiables</h4>
-          {allPicks.map((p, i) => (
-            <div key={i} className={styles.pick}>
-              <span className={styles.pickMkt}>{p.market}</span>
-              <span className={styles.pickLab}>{p.pick}</span>
-              <Pill label={pct(p.prob)} variant={p.level?.toLowerCase()} />
-            </div>
-          ))}
-        </section>
-      )}
-
       {edge?.rows?.length > 0 && (
         <section className={styles.sec}>
           <h4 className={styles.secTitle}>Edge vs mercado · {edge.provider}</h4>
@@ -81,7 +76,8 @@ function SoccerTeamContent({ match, side }) {
       <section className={styles.sec}>
         <h4 className={styles.secTitle}>Resultado 1X2</h4>
         {a.resultado?.map((r, i) => (
-          <MktRow key={i} label={r.label} prob={r.prob} cal={r.cal} />
+          <MktRow key={i} label={r.label} prob={r.prob} cal={r.cal}
+            pickLevel={pickLevel(r.label, pickMap)} />
         ))}
       </section>
 
@@ -93,15 +89,18 @@ function SoccerTeamContent({ match, side }) {
           ['Over 3.5', a.goles?.over35],
           ['Ambos marcan (BTTS)', a.goles?.btts],
         ].filter(([, v]) => v != null).map(([lab, p]) => (
-          <MktRow key={lab} label={lab} prob={p} />
+          <MktRow key={lab} label={lab} prob={p}
+            pickLevel={pickLevel(lab, pickMap)} />
         ))}
       </section>
 
       {a.valla && (
         <section className={styles.sec}>
           <h4 className={styles.secTitle}>Valla invicta</h4>
-          <MktRow label={match.home} prob={a.valla.home} />
-          <MktRow label={match.away} prob={a.valla.away} />
+          <MktRow label={match.home} prob={a.valla.home}
+            pickLevel={pickLevel(match.home, pickMap)} />
+          <MktRow label={match.away} prob={a.valla.away}
+            pickLevel={pickLevel(match.away, pickMap)} />
         </section>
       )}
 
@@ -112,7 +111,10 @@ function SoccerTeamContent({ match, side }) {
             ['Over 8.5', a.corners.o85],
             ['Over 9.5', a.corners.o95],
             ['Over 10.5', a.corners.o105],
-          ].map(([lab, p]) => <MktRow key={lab} label={lab} prob={p} />)}
+          ].map(([lab, p]) => (
+            <MktRow key={lab} label={lab} prob={p}
+              pickLevel={pickLevel(lab, pickMap)} />
+          ))}
         </section>
       )}
     </div>

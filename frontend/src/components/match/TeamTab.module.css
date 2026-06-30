@@ -43,20 +43,22 @@
   color: var(--faint); margin-bottom: 8px;
 }
 
-.pick {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; background: var(--panel-2);
-  border-radius: 8px; margin-bottom: 6px;
-}
-.pickMkt {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
-  text-transform: uppercase; color: var(--faint); min-width: 80px; flex-shrink: 0;
-}
-.pickLab { flex: 1; font-weight: 600; font-size: 13px; color: var(--txt); }
 
 .mktRow {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 0; border-top: 1px solid var(--line-2); font-size: 13px;
+  padding: 6px 8px; border-top: 1px solid var(--line-2); font-size: 13px;
+  margin: 0 -8px; border-radius: 0;
+}
+.isPick {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 7px;
+  border-top-color: transparent;
+  margin-top: 2px;
+}
+.isPick + .mktRow { border-top-color: transparent; }
+.pickDot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
 }
 .mktLab { flex: 1; color: var(--txt); font-weight: 500; }
 .mktCal { color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
