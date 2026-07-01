@@ -31,7 +31,7 @@ predictor/*_last.txt
 
 # frontend build artifacts
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ — commiteado para deploy en Render (sin Node.js en el server)
 
 # python venv si se usa
 .venv/
