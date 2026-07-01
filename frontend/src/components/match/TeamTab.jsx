@@ -65,7 +65,6 @@ function MktRow({ label, prob, cal, pickLevel }) {
     <div className={`flex items-center gap-3 py-2 rounded-lg px-2 -mx-2 transition-colors ${isPick ? 'bg-[rgba(94,234,212,0.04)]' : ''}`}>
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPick ? 'bg-accent' : 'bg-transparent'}`} />
       <span className={`text-sm flex-1 min-w-0 truncate ${isPick ? 'text-body font-medium' : 'text-muted'}`}>{label}</span>
-      {cal != null && <span className="text-[10px] text-subtle shrink-0">cal</span>}
       <ProbBar prob={prob} cal={cal} />
     </div>
   )
@@ -87,12 +86,110 @@ function SectionTitle({ children }) {
   )
 }
 
-function SoccerTeamContent({ match }) {
+const WTL_STYLE = {
+  W: { bg: 'rgba(94,234,212,0.15)',  color: '#5eead4' },  // ganó
+  T: { bg: 'rgba(251,191,36,0.16)',  color: '#fbbf24' },  // empató
+  L: { bg: 'rgba(251,113,133,0.15)', color: '#fb7185' },  // perdió
+}
+
+function WTLStrip({ results }) {
+  if (!results?.length) return <span className="text-xs text-subtle">—</span>
+  return (
+    <div className="flex gap-0.5 shrink-0">
+      {results.map((r, i) => {
+        const s = WTL_STYLE[r] ?? WTL_STYLE.L
+        return (
+          <span
+            key={i}
+            className="inline-flex items-center justify-center rounded-[3px] text-[9px] font-bold leading-none w-3.5 h-4"
+            style={{ background: s.bg, color: s.color }}
+          >
+            {r}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+const pctColor = (p) => p >= 65 ? 'text-accent' : p >= 55 ? 'text-sky' : 'text-muted'
+
+// Mercados del EQUIPO seleccionado (home/away): su victoria, su doble oportunidad
+// y su valla; más los mercados de partido (goles/corners) que son compartidos.
+function buildTeamRows(a, side) {
+  const rows = []
+  const res = a.resultado ?? []
+  // Nombres resueltos del modelo (a.home/a.away) para que coincidan con la fila Resultado
+  // y con los picks (resaltado); pueden diferir del nombre de Linemate del tab.
+  const team = side === 'home' ? a.home : a.away
+  if (side === 'home') {
+    if (res[0]) rows.push({ market: 'Resultado', pick: res[0].label, prob: res[0].cal ?? res[0].prob })
+    if (a.doble?.['1X'] != null) rows.push({ market: 'Doble oportunidad', pick: `${team} o empate`, prob: a.doble['1X'] })
+    if (a.valla?.home != null)   rows.push({ market: 'Valla invicta', pick: `${team} sin recibir gol`, prob: a.valla.home })
+  } else {
+    if (res[2]) rows.push({ market: 'Resultado', pick: res[2].label, prob: res[2].cal ?? res[2].prob })
+    if (a.doble?.['X2'] != null) rows.push({ market: 'Doble oportunidad', pick: `${team} o empate`, prob: a.doble['X2'] })
+    if (a.valla?.away != null)   rows.push({ market: 'Valla invicta', pick: `${team} sin recibir gol`, prob: a.valla.away })
+  }
+  const g = a.goles ?? {}
+  if (g.over15 != null) rows.push({ market: 'Goles', pick: 'Over 1.5', prob: g.over15 })
+  if (g.over25 != null) rows.push({ market: 'Goles', pick: 'Over 2.5', prob: g.over25 })
+  if (g.over35 != null) rows.push({ market: 'Goles', pick: 'Over 3.5', prob: g.over35 })
+  if (g.btts != null)   rows.push({ market: 'BTTS', pick: 'Ambos marcan', prob: g.btts })
+  if (a.corners) {
+    if (a.corners.o85 != null)  rows.push({ market: 'Corners', pick: 'Over 8.5', prob: a.corners.o85 })
+    if (a.corners.o95 != null)  rows.push({ market: 'Corners', pick: 'Over 9.5', prob: a.corners.o95 })
+    if (a.corners.o105 != null) rows.push({ market: 'Corners', pick: 'Over 10.5', prob: a.corners.o105 })
+  }
+  return rows
+}
+
+function MarketTable({ rows, wtl, pickMap }) {
+  const last5 = (wtl ?? []).slice(-5)
+  const last10 = (wtl ?? []).slice(-10)
+  return (
+    <div className="overflow-x-auto -mx-1">
+      <div className="min-w-[460px] px-1">
+        <div className="flex items-center gap-3 pb-2 border-b border-white/[0.06]">
+          <span className="text-[10px] text-subtle uppercase tracking-wider flex-1">Mercado</span>
+          <span className="text-[10px] text-subtle uppercase tracking-wider w-11 text-right">%</span>
+          <span className="text-[10px] text-subtle uppercase tracking-wider w-20 text-center">Últ. 5</span>
+          <span className="text-[10px] text-subtle uppercase tracking-wider w-40 text-center">Últ. 10</span>
+        </div>
+        {rows.map((r, i) => {
+          const p = Math.round((r.prob ?? 0) * 100)
+          const isPick = Boolean(pickLevel(r.pick, pickMap))
+          return (
+            <div
+              key={i}
+              className={`flex items-center gap-3 py-2.5 border-b border-white/[0.04] ${isPick ? 'bg-[rgba(94,234,212,0.04)]' : ''}`}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPick ? 'bg-accent' : 'bg-transparent'}`} />
+                <div className="min-w-0">
+                  <span className={`text-sm block truncate ${isPick ? 'text-body font-medium' : 'text-body'}`}>{r.pick}</span>
+                  <span className="text-[10px] text-subtle uppercase tracking-wide">{r.market}</span>
+                </div>
+              </div>
+              <span className={`text-sm font-bold tabular w-11 text-right ${pctColor(p)}`}>{p}%</span>
+              <div className="w-20 flex justify-center"><WTLStrip results={last5} /></div>
+              <div className="w-40 flex justify-center"><WTLStrip results={last10} /></div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SoccerTeamContent({ match, side }) {
   const a = match.analysis
   const edge = match.edge
   if (!a) return <p className="text-sm text-muted py-4">Sin análisis disponible.</p>
 
   const pickMap = Object.fromEntries((a.picks ?? []).map(p => [p.pick, p.level]))
+  const rows = buildTeamRows(a, side)
+  const wtl = a.wtl?.[side] ?? []
 
   return (
     <div>
@@ -105,46 +202,14 @@ function SoccerTeamContent({ match }) {
       )}
 
       <section>
-        <SectionTitle>Resultado 1X2</SectionTitle>
-        {a.resultado?.map((r, i) => (
-          <MktRow key={i} label={r.label} prob={r.prob} cal={r.cal}
-            pickLevel={pickLevel(r.label, pickMap)} />
-        ))}
+        <SectionTitle>Mercados · {side === 'home' ? match.home : match.away}</SectionTitle>
+        <MarketTable rows={rows} wtl={wtl} pickMap={pickMap} />
+        <p className="text-[11px] text-subtle mt-2">
+          Últ. 5 / 10 = forma reciente del equipo (<span className="text-accent font-semibold">W</span> ganó ·{' '}
+          <span className="text-gold font-semibold">T</span> empató ·{' '}
+          <span className="text-hot font-semibold">L</span> perdió), del más viejo al más reciente.
+        </p>
       </section>
-
-      <section>
-        <SectionTitle>Goles</SectionTitle>
-        {[
-          ['Over 1.5', a.goles?.over15],
-          ['Over 2.5', a.goles?.over25],
-          ['Over 3.5', a.goles?.over35],
-          ['Ambos marcan (BTTS)', a.goles?.btts],
-        ].filter(([, v]) => v != null).map(([lab, p]) => (
-          <MktRow key={lab} label={lab} prob={p}
-            pickLevel={pickLevel(lab, pickMap)} />
-        ))}
-      </section>
-
-      {a.valla && (
-        <section>
-          <SectionTitle>Valla invicta</SectionTitle>
-          <MktRow label={match.home} prob={a.valla.home} pickLevel={pickLevel(match.home, pickMap)} />
-          <MktRow label={match.away} prob={a.valla.away} pickLevel={pickLevel(match.away, pickMap)} />
-        </section>
-      )}
-
-      {a.corners && (
-        <section>
-          <SectionTitle>Corners · esp. {a.corners.exp}</SectionTitle>
-          {[
-            ['Over 8.5', a.corners.o85],
-            ['Over 9.5', a.corners.o95],
-            ['Over 10.5', a.corners.o105],
-          ].map(([lab, p]) => (
-            <MktRow key={lab} label={lab} prob={p} pickLevel={pickLevel(lab, pickMap)} />
-          ))}
-        </section>
-      )}
     </div>
   )
 }
@@ -201,7 +266,7 @@ export default function TeamTab({ match }) {
       </div>
 
       {isSoccer
-        ? <SoccerTeamContent match={match} />
+        ? <SoccerTeamContent match={match} side={activeSubTeam} />
         : <MLBTeamContent match={match} />
       }
     </div>

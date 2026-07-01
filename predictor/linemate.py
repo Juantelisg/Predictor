@@ -78,6 +78,7 @@ def flatten(t):
     line = t.get("line")
     sig = next((s for s in (t.get("signals") or []) if s.get("summary")), None)
     l5_cell = _split_cell(records, line, "LAST_5")
+    l10_cell = _split_cell(records, line, "LAST_10")
     sea_cell = _split_cell(records, line, "SEASON")
     return {
         "game": t.get("gameId", ""),
@@ -92,6 +93,7 @@ def flatten(t):
         "side": t.get("outcome", ""),
         "splits": {s: _hitrate(records, line, s) for s in SPLITS},
         "games_l5": l5_cell.get("games"),       # juegos reales en L5 (no slots vacíos)
+        "games_l10": l10_cell.get("games"),      # juegos reales en L10
         "games_season": sea_cell.get("games"),   # juegos reales en temporada
         "avg_l5": l5_cell.get("average"),        # promedio del stat en L5 (ej: 1.4 tiros/partido)
         "signal": sig.get("annotation") if sig else "",

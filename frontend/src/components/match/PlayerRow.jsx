@@ -48,10 +48,15 @@ function ReadBadge({ read }) {
   )
 }
 
+const frac = (hits, games) => (hits != null && games) ? `${hits}/${games}` : null
+
 export default function PlayerRow({ player }) {
-  const { who, market, side, line, l5, l10, season, read, position } = player
+  const { who, market, side, line, l5, l10, season, read, position,
+          hits_l5, games_l5, hits_l10, games_l10 } = player
   const overLabel = side === 'over' ? `Over ${line}` : side === 'under' ? `Under ${line}` : String(line ?? '')
   const posCfg = POS_CONFIG[position?.toLowerCase()]
+  const f5 = frac(hits_l5, games_l5)
+  const f10 = frac(hits_l10, games_l10)
 
   return (
     <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg transition-colors"
@@ -73,11 +78,11 @@ export default function PlayerRow({ player }) {
 
       <div className="flex items-center gap-4 shrink-0">
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-[9px] text-subtle">L5</span>
+          <span className="text-[9px] text-subtle">L5{f5 ? ` · ${f5}` : ''}</span>
           <HitBar rate={l5} />
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-[9px] text-subtle">L10</span>
+          <span className="text-[9px] text-subtle">L10{f10 ? ` · ${f10}` : ''}</span>
           <HitBar rate={l10} />
         </div>
         {season != null && (

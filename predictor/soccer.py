@@ -60,6 +60,19 @@ def _form_L5(df, team, asof, n=5):
     return {"gf": round(gf / m, 2), "ga": round(ga / m, 2), "cs": int(cs), "n": m}
 
 
+def _form_wtl(df, team, asof, n=10):
+    """Secuencia W/T/L de los ultimos n partidos oficiales del equipo (mas viejo -> mas reciente).
+    Lista de 'W'|'T'|'L'. [] si no hay datos. El frontend corta a 5/10 para los strips de forma."""
+    mask = ((df.home_team == team) | (df.away_team == team)) & (df.date < asof)
+    recent = df[mask].dropna(subset=["home_score", "away_score"]).sort_values("date").tail(n)
+    out = []
+    for row in recent.itertuples():
+        gf = row.home_score if row.home_team == team else row.away_score
+        ga = row.away_score if row.home_team == team else row.home_score
+        out.append("W" if gf > ga else "L" if gf < ga else "T")
+    return out
+
+
 def load():
     txt = cache.cached("intl_results", 12 * 3600, lambda: requests.get(CSV, timeout=30).text)
     df = pd.read_csv(io.StringIO(txt)).dropna(subset=["home_score", "away_score"]).copy()
@@ -259,6 +272,8 @@ def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_al
     if df_all is not None:
         r["form_home"] = _form_L5(df_all, local, today)
         r["form_away"] = _form_L5(df_all, visita, today)
+        r["wtl_home"] = _form_wtl(df_all, local, today)
+        r["wtl_away"] = _form_wtl(df_all, visita, today)
     return r
 
 

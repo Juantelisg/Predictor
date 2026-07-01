@@ -125,11 +125,16 @@ def _player_panorama(lm_codes, league):
             side = t.get("side") or ""
             line = t.get("line")
             games_l5 = t.get("games_l5")
+            games_l10 = t.get("games_l10")
             games_season = t.get("games_season")
             avg_l5 = t.get("avg_l5")
 
             if not _quality_ok(mk, side, line, l5, l10, games_l5, games_season, avg_l5):
                 continue
+
+            # aciertos absolutos desde el % crudo (para mostrar "4/5", "6/10")
+            hits = lambda rate, g: round((rate / 100) * g) if (rate is not None and g) else None
+            hits_l5, hits_l10 = hits(l5, games_l5), hits(l10, games_l10)
 
             is_over = side.lower().startswith("over")
             # Score: pesa más L5, tiebreak por games_season (más muestra = más confiable)
@@ -146,6 +151,10 @@ def _player_panorama(lm_codes, league):
                 "l10": rnd(l10),
                 "season": rnd(season),
                 "games": games_l5,
+                "games_l5": games_l5,
+                "hits_l5": hits_l5,
+                "games_l10": games_l10,
+                "hits_l10": hits_l10,
                 "avg": round(avg_l5, 2) if avg_l5 is not None else None,
                 "read": _panorama_read(l5, is_over),
                 "signal": t.get("signal", ""),
@@ -253,6 +262,7 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
             "resultado": resultado, "doble": doble, "goles": goles, "valla": valla,
             "corners": corners, "cards": cards,
             "form": {"home": r.get("form_home"), "away": r.get("form_away")},
+            "wtl": {"home": r.get("wtl_home") or [], "away": r.get("wtl_away") or []},
             "linemate": _linemate_trends(lm_codes, league),
             "panorama": _player_panorama(lm_codes, league),
             "availability": _availability(L, V, date, league),
