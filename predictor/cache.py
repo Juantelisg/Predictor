@@ -34,6 +34,24 @@ def _fetch_retry(fetcher, tries=3, backoff=1.2):
             time.sleep(backoff * (i + 1))
 
 
+def peek(key, ttl_sec):
+    """Lee el cache SIN fetchear: devuelve el valor si esta fresco, None si no.
+    Para endpoints no bloqueantes que disparan el build pesado en segundo plano."""
+    now = time.time()
+    if key in _MEM_CACHE:
+        val, exp = _MEM_CACHE[key]
+        if now < exp:
+            return val
+    try:
+        path = os.path.join(CACHE_DIR, hashlib.md5(key.encode()).hexdigest() + ".json")
+        if os.path.exists(path) and (now - os.path.getmtime(path)) < ttl_sec:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+
 def cached(key, ttl_sec, fetcher):
     """Devuelve el valor cacheado si esta fresco; si no, llama a fetcher() y lo guarda.
     Intenta disco primero; si falla (filesystem de solo lectura / sin permisos) cae a memoria."""

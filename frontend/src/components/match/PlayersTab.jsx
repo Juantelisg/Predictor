@@ -1,23 +1,43 @@
+import { useQuery } from '@tanstack/react-query'
 import { useSport } from '../../hooks/useSport'
+import { getWcPlayers } from '../../api/soccer'
 import PlayerRow from './PlayerRow'
 import Empty from '../common/Empty'
 
 function normalize(code) { return (code ?? '').toUpperCase().trim() }
+const dedupKey = (p) => `${normalize(p.who)}|${p.market}|${p.line}`
 
 export default function PlayersTab({ match }) {
   const { activeSubTeam, setSubTeam, activeCategory, setCategory } = useSport()
 
+  const isSoccer = !match._mlbRaw
+  // Props desde game-logs reales de API-Football (cubre lo que Linemate no trae). El endpoint
+  // es no bloqueante: mientras construye responde status='building' -> hacemos polling.
+  const { data: apiData } = useQuery({
+    queryKey: ['wc-players', match.home, match.away],
+    queryFn: () => getWcPlayers(match.home, match.away),
+    enabled: isSoccer && !!match.home && !!match.away,
+    staleTime: 60 * 60_000,
+    refetchInterval: (q) => q.state.data?.status === 'building' ? 15_000 : false,
+  })
+  const building = apiData?.status === 'building'
+  const apiPlayers = (apiData?.players ?? []).map(p => ({ ...p, _src: 'apifootball' }))
+
   const panorama = match.analysis?.panorama ?? []
   const linemate  = match.analysis?.linemate  ?? []
 
-  const allPlayers = [
+  // API-Football manda (game-log propio + más mercados); Linemate solo aporta lo que no colisione.
+  const apiKeys = new Set(apiPlayers.map(dedupKey))
+  const linematePlayers = [
     ...panorama.map(p => ({ ...p, _src: 'panorama' })),
     ...linemate.map(p => ({
       who: p.who, market: p.market, side: p.over != null ? 'over' : null,
       line: p.line, l5: p.l5, l10: p.l10, season: p.season,
       team: p.team, read: p.read, _src: 'linemate',
     })),
-  ]
+  ].filter(p => !apiKeys.has(dedupKey(p)))
+
+  const allPlayers = [...apiPlayers, ...linematePlayers]
 
   const homeCode = normalize(match.home_code ?? match.home)
   const awayCode = normalize(match.away_code ?? match.away)
@@ -90,6 +110,15 @@ export default function PlayersTab({ match }) {
         </div>
       )}
 
+      {/* Estado de carga de los props de API-Football (build en segundo plano) */}
+      {building && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs text-muted"
+          style={{ background: 'rgba(94,234,212,0.05)', border: '1px solid rgba(94,234,212,0.12)' }}>
+          <span className="w-3 h-3 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />
+          Generando props de jugadores desde game-logs reales (tiros, tiros al arco, goles…). Puede tardar 1-2 min la primera vez; después queda cacheado.
+        </div>
+      )}
+
       {/* Player list */}
       {filtered.length > 0 ? (
         <div>
@@ -112,7 +141,8 @@ export default function PlayersTab({ match }) {
 
       {allPlayers.length > 0 && (
         <p className="text-[11px] text-subtle mt-4 pt-3 border-t border-white/[0.04]">
-          Fuente: Linemate / panorama. Tasas sin ajuste por contexto del partido.
+          Fuente: game-logs API-Football (hit-rate de los últimos partidos) + Linemate. Hits = veces
+          que se cumplió sobre juegos disputados. Tasas sin ajuste por rival.
         </p>
       )}
     </div>

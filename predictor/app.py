@@ -11,7 +11,7 @@ Levantar (local):
 
 Deploy (Render): ver render.yaml en la raiz del repo.
 """
-import os, sys, datetime, json
+import os, sys, datetime, json, threading
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -198,6 +198,47 @@ def wc_today(date: str = None):
         return cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
     except Exception as e:
         return {"date": date, "cards": [], "error": str(e)}
+
+
+_PLAYERS_TTL = 12 * 3600
+_players_building = set()
+_players_lock = threading.Lock()
+
+
+def _players_key(home, away):
+    return f"apif_players:{home}|{away}"
+
+
+def _build_players(home, away, key):
+    """Construye los candidatos de props (game-logs de API-Football) para AMBOS equipos y los
+    cachea. Corre en un thread aparte porque son ~22 requests espaciadas ~6s (no bloquea el web)."""
+    try:
+        import soccer_players as sp
+        cache.cached(key, _PLAYERS_TTL, lambda: {
+            "home": home, "away": away,
+            "players": sp.candidates(home, tag=home) + sp.candidates(away, tag=away),
+        })
+    except Exception:
+        pass
+    finally:
+        with _players_lock:
+            _players_building.discard(key)
+
+
+@app.get("/api/wc/players")
+def wc_players(home: str, away: str):
+    """Props de jugadores del partido desde game-logs reales de API-Football (cubre lo que el
+    feed de Linemate no trae). NO bloqueante: si aun no esta cacheado, dispara el build en
+    segundo plano y devuelve status='building' -> el front hace polling hasta status='ready'."""
+    key = _players_key(home, away)
+    cached_val = cache.peek(key, _PLAYERS_TTL)
+    if cached_val is not None:
+        return {**cached_val, "status": "ready"}
+    with _players_lock:
+        if key not in _players_building:
+            _players_building.add(key)
+            threading.Thread(target=_build_players, args=(home, away, key), daemon=True).start()
+    return {"home": home, "away": away, "players": [], "status": "building"}
 
 
 @app.get("/api/mlb/today")
