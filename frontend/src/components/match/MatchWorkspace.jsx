@@ -1,7 +1,6 @@
 import { useSport } from '../../hooks/useSport'
 import TeamTab from './TeamTab'
 import PlayersTab from './PlayersTab'
-import styles from './MatchWorkspace.module.css'
 
 export default function MatchWorkspace() {
   const { selectedMatch: match, activeMainTab, setMainTab, clearMatch } = useSport()
@@ -12,49 +11,60 @@ export default function MatchWorkspace() {
     (match.analysis?.linemate?.length  ?? 0) > 0
 
   return (
-    <div>
-      {/* Header del partido */}
-      <div className={styles.header}>
-        <button className={styles.back} onClick={clearMatch}>
-          ← Partidos
+    <div className="h-full flex flex-col">
+      {/* Match header */}
+      <div className="px-6 pt-5 pb-4 border-b border-white/[0.06] shrink-0">
+        <button
+          onClick={clearMatch}
+          className="flex items-center gap-1.5 text-xs text-muted hover:text-body mb-4 transition-colors"
+        >
+          ← Todos los partidos
         </button>
-        <div className={styles.matchTitle}>
+
+        <div className="flex items-center gap-3">
           {match.home_flag && (
-            <img className={styles.flag} src={match.home_flag} alt="" />
+            <img className="w-8 h-8 rounded object-cover" src={match.home_flag} alt="" />
           )}
-          <span className={styles.home}>{match.home}</span>
-          <span className={styles.vs}>vs</span>
-          <span className={styles.away}>{match.away}</span>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-body leading-snug">
+              {match.home}
+              <span className="text-muted font-normal mx-2 text-sm">vs</span>
+              {match.away}
+            </h2>
+            {match.time && (
+              <span className="text-xs text-muted tabular">{match.time}</span>
+            )}
+          </div>
           {match.away_flag && (
-            <img className={styles.flag} src={match.away_flag} alt="" />
+            <img className="w-8 h-8 rounded object-cover" src={match.away_flag} alt="" />
           )}
         </div>
-        {match.time && (
-          <span className={styles.time}>{match.time}</span>
-        )}
       </div>
 
-      {/* Tabs principales: TEAM | PLAYERS */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeMainTab === 'team' ? styles.active : ''}`}
-          onClick={() => setMainTab('team')}
-        >
-          TEAM
-        </button>
-        <button
-          className={`${styles.tab} ${activeMainTab === 'players' ? styles.active : ''}`}
-          onClick={() => setMainTab('players')}
-        >
-          PLAYERS
-          {!hasPlayers && <span className={styles.noData}>sin datos</span>}
-        </button>
+      {/* Main tabs */}
+      <div className="flex gap-0 px-6 shrink-0 border-b border-white/[0.06]">
+        {['team', 'players'].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setMainTab(tab)}
+            className={`px-4 py-3 text-xs font-semibold uppercase tracking-widest transition-colors border-b-2 ${
+              activeMainTab === tab
+                ? 'text-accent border-accent'
+                : 'text-muted hover:text-body border-transparent'
+            }`}
+          >
+            {tab}
+            {tab === 'players' && !hasPlayers && (
+              <span className="ml-1.5 text-[10px] text-subtle normal-case tracking-normal opacity-60">sin datos</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Contenido */}
-      <div className={styles.body}>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         {activeMainTab === 'team'
-          ? <TeamTab    match={match} />
+          ? <TeamTab match={match} />
           : <PlayersTab match={match} />
         }
       </div>

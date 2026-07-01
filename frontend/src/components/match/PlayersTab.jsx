@@ -1,7 +1,6 @@
 import { useSport } from '../../hooks/useSport'
 import PlayerRow from './PlayerRow'
 import Empty from '../common/Empty'
-import styles from './PlayersTab.module.css'
 
 function normalize(code) { return (code ?? '').toUpperCase().trim() }
 
@@ -11,7 +10,6 @@ export default function PlayersTab({ match }) {
   const panorama = match.analysis?.panorama ?? []
   const linemate  = match.analysis?.linemate  ?? []
 
-  // Unificar fuentes: panorama y linemate tienen esquemas similares
   const allPlayers = [
     ...panorama.map(p => ({ ...p, _src: 'panorama' })),
     ...linemate.map(p => ({
@@ -21,64 +19,68 @@ export default function PlayersTab({ match }) {
     })),
   ]
 
-  // Inferir teams de los jugadores vs los códigos del partido
   const homeCode = normalize(match.home_code ?? match.home)
   const awayCode = normalize(match.away_code ?? match.away)
 
   const teamPlayers = allPlayers.filter(p => {
     const t = normalize(p.team)
-    if (activeSubTeam === 'home') {
-      return t === homeCode || t === normalize(match.home)
-    } else {
-      return t === awayCode || t === normalize(match.away)
-    }
+    return activeSubTeam === 'home'
+      ? t === homeCode || t === normalize(match.home)
+      : t === awayCode || t === normalize(match.away)
   })
 
-  // Si no hay team info en los jugadores, mostrar todos (fallback)
   const playersToShow = teamPlayers.length > 0 ? teamPlayers : allPlayers
-
-  // Categorías únicas
   const categories = [...new Set(playersToShow.map(p => p.market).filter(Boolean))]
 
   const filtered = activeCategory
     ? playersToShow.filter(p => p.market === activeCategory)
     : playersToShow
 
-  const teamLabel = (side) => side === 'home' ? match.home : match.away
-  const flagFor   = (side) => side === 'home' ? match.home_flag : match.away_flag
-
   return (
     <div>
-      {/* Selector Home | Away */}
-      <div className={styles.teamSelector}>
-        {['home', 'away'].map(side => (
-          <button
-            key={side}
-            className={`${styles.teamBtn} ${activeSubTeam === side ? styles.active : ''}`}
-            onClick={() => setSubTeam(side)}
-          >
-            {flagFor(side) && (
-              <img className={styles.miniFlag} src={flagFor(side)} alt="" />
-            )}
-            {teamLabel(side)}
-          </button>
-        ))}
+      {/* Team selector */}
+      <div className="flex gap-1 mb-4 p-1 rounded-xl inline-flex" style={{ background: 'rgba(20,27,39,0.8)' }}>
+        {['home', 'away'].map(side => {
+          const label = side === 'home' ? match.home : match.away
+          const flag  = side === 'home' ? match.home_flag : match.away_flag
+          return (
+            <button
+              key={side}
+              onClick={() => setSubTeam(side)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeSubTeam === side ? 'text-body' : 'text-muted hover:text-body'
+              }`}
+              style={activeSubTeam === side ? { background: 'rgba(255,255,255,0.07)' } : {}}
+            >
+              {flag && <img className="w-4 h-4 rounded-sm object-cover" src={flag} alt="" />}
+              <span className="truncate max-w-[110px]">{label}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Filtros de categoría */}
+      {/* Category filters */}
       {categories.length > 0 && (
-        <div className={styles.cats}>
+        <div className="flex flex-wrap gap-1.5 mb-4">
           <button
-            className={`${styles.cat} ${!activeCategory ? styles.catActive : ''}`}
             onClick={() => setCategory(null)}
+            className="px-3 py-1 text-xs rounded-full border transition-colors"
+            style={!activeCategory
+              ? { background: 'rgba(94,234,212,0.1)', color: '#5eead4', borderColor: 'rgba(94,234,212,0.3)' }
+              : { background: 'transparent', color: '#8892a4', borderColor: 'rgba(255,255,255,0.08)' }
+            }
           >
             Todos
           </button>
           {categories.map(c => (
             <button
               key={c}
-              className={`${styles.cat} ${activeCategory === c ? styles.catActive : ''}`}
               onClick={() => setCategory(c)}
+              className="px-3 py-1 text-xs rounded-full border transition-colors"
+              style={activeCategory === c
+                ? { background: 'rgba(94,234,212,0.1)', color: '#5eead4', borderColor: 'rgba(94,234,212,0.3)' }
+                : { background: 'transparent', color: '#8892a4', borderColor: 'rgba(255,255,255,0.08)' }
+              }
             >
               {c}
             </button>
@@ -86,12 +88,12 @@ export default function PlayersTab({ match }) {
         </div>
       )}
 
-      {/* Lista de jugadores */}
+      {/* Player list */}
       {filtered.length > 0 ? (
-        <div className={styles.list}>
-          <div className={styles.listHeader}>
-            <span className={styles.hName}>Jugador · Mercado</span>
-            <span className={styles.hStats}>L5 · L10 · Año</span>
+        <div>
+          <div className="flex items-center gap-4 px-3 pb-2 border-b border-white/[0.06] mb-1">
+            <span className="text-[10px] text-subtle uppercase tracking-wider flex-1">Jugador</span>
+            <span className="text-[10px] text-subtle uppercase tracking-wider">Hits</span>
           </div>
           {filtered.map((p, i) => <PlayerRow key={i} player={p} />)}
         </div>
@@ -107,9 +109,8 @@ export default function PlayersTab({ match }) {
       )}
 
       {allPlayers.length > 0 && (
-        <p className={styles.src}>
-          Fuente: Linemate / panorama de rendimiento.
-          Tasas históricas sin ajuste por contexto del partido.
+        <p className="text-[11px] text-subtle mt-4 pt-3 border-t border-white/[0.04]">
+          Fuente: Linemate / panorama. Tasas sin ajuste por contexto del partido.
         </p>
       )}
     </div>

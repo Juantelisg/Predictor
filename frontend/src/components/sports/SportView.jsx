@@ -1,32 +1,38 @@
 import { useSport } from '../../hooks/useSport'
 import MatchPicker from '../match/MatchPicker'
 import MatchWorkspace from '../match/MatchWorkspace'
-import TrackRecord from './TrackRecord'
 import OffSeason from './OffSeason'
-import styles from './SportView.module.css'
 
 const OFF_SEASON = ['nfl', 'nba']
 
 export default function SportView() {
-  const { sport, selectedMatch, clearMatch } = useSport()
+  const { sport, selectedMatch } = useSport()
 
-  // NFL/NBA off-season: no workspace disponible
   if (OFF_SEASON.includes(sport)) {
     return (
-      <main className={styles.main}>
+      <main className="flex-1 overflow-y-auto">
         <OffSeason sport={sport} />
       </main>
     )
   }
 
   return (
-    <main className={styles.main}>
+    <main className="flex-1 overflow-hidden flex">
       {selectedMatch ? (
-        // Nivel 3: workspace del partido seleccionado
-        <MatchWorkspace />
+        <>
+          {/* Sidebar: compact match list */}
+          <aside className="w-[300px] shrink-0 border-r border-white/[0.06] overflow-y-auto bg-surface/50">
+            <MatchPicker sport={sport} compact />
+          </aside>
+          {/* Workspace */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <MatchWorkspace />
+          </div>
+        </>
       ) : (
-        // Nivel 1 + 2: picker de partidos
-        <MatchPicker sport={sport} />
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <MatchPicker sport={sport} />
+        </div>
       )}
     </main>
   )

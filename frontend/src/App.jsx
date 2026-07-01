@@ -14,8 +14,10 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Header />
-      <SportView />
+      <div className="flex flex-col h-screen overflow-hidden">
+        <Header />
+        <SportView />
+      </div>
     </QueryClientProvider>
   )
 }
