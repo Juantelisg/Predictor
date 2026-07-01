@@ -60,16 +60,18 @@ def _form_L5(df, team, asof, n=5):
     return {"gf": round(gf / m, 2), "ga": round(ga / m, 2), "cs": int(cs), "n": m}
 
 
-def _form_wtl(df, team, asof, n=10):
-    """Secuencia W/T/L de los ultimos n partidos oficiales del equipo (mas viejo -> mas reciente).
-    Lista de 'W'|'T'|'L'. [] si no hay datos. El frontend corta a 5/10 para los strips de forma."""
+def _last_scores(df, team, asof, n=10):
+    """Ultimos n partidos oficiales del equipo como [goles_a_favor, goles_en_contra]
+    (mas viejo -> mas reciente). [] si no hay datos. Base para los strips de 'ritmo del
+    pick' del frontend: de (gf, ga) se deriva el acierto de cada mercado (over/under,
+    resultado, doble, BTTS, valla) por partido."""
     mask = ((df.home_team == team) | (df.away_team == team)) & (df.date < asof)
     recent = df[mask].dropna(subset=["home_score", "away_score"]).sort_values("date").tail(n)
     out = []
     for row in recent.itertuples():
         gf = row.home_score if row.home_team == team else row.away_score
         ga = row.away_score if row.home_team == team else row.home_score
-        out.append("W" if gf > ga else "L" if gf < ga else "T")
+        out.append([int(gf), int(ga)])
     return out
 
 
@@ -272,8 +274,8 @@ def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_al
     if df_all is not None:
         r["form_home"] = _form_L5(df_all, local, today)
         r["form_away"] = _form_L5(df_all, visita, today)
-        r["wtl_home"] = _form_wtl(df_all, local, today)
-        r["wtl_away"] = _form_wtl(df_all, visita, today)
+        r["last_home"] = _last_scores(df_all, local, today)
+        r["last_away"] = _last_scores(df_all, visita, today)
     return r
 
 

@@ -262,7 +262,7 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
             "resultado": resultado, "doble": doble, "goles": goles, "valla": valla,
             "corners": corners, "cards": cards,
             "form": {"home": r.get("form_home"), "away": r.get("form_away")},
-            "wtl": {"home": r.get("wtl_home") or [], "away": r.get("wtl_away") or []},
+            "last_games": {"home": r.get("last_home") or [], "away": r.get("last_away") or []},
             "linemate": _linemate_trends(lm_codes, league),
             "panorama": _player_panorama(lm_codes, league),
             "availability": _availability(L, V, date, league),

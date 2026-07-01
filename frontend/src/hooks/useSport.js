@@ -7,27 +7,27 @@ export const useSport = create((set) => ({
   selectedMatch: null,
   // Nivel 3: estado dentro del workspace
   activeMainTab: 'team',      // 'team' | 'players'
-  activeSubTeam: 'home',      // 'home' | 'away'
+  activeSubTeam: 'general',   // 'general' | 'home' | 'away'
   activeCategory: null,        // null = All, o el market key
 
   setSport: (sport) => set({
     sport,
     selectedMatch: null,
     activeMainTab: 'team',
-    activeSubTeam: 'home',
+    activeSubTeam: 'general',
     activeCategory: null,
   }),
 
   selectMatch: (match) => set({
     selectedMatch: match,
     activeMainTab: 'team',
-    activeSubTeam: 'home',
+    activeSubTeam: 'general',
     activeCategory: null,
   }),
 
   clearMatch: () => set({ selectedMatch: null }),
 
-  setMainTab: (tab) => set({ activeMainTab: tab, activeSubTeam: 'home', activeCategory: null }),
+  setMainTab: (tab) => set({ activeMainTab: tab, activeSubTeam: 'general', activeCategory: null }),
   setSubTeam: (team) => set({ activeSubTeam: team, activeCategory: null }),
   setCategory: (cat) => set({ activeCategory: cat }),
 }))

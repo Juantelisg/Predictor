@@ -29,7 +29,9 @@ export default function PlayersTab({ match }) {
       : t === awayCode || t === normalize(match.away)
   })
 
-  const playersToShow = teamPlayers.length > 0 ? teamPlayers : allPlayers
+  const playersToShow = activeSubTeam === 'general'
+    ? allPlayers
+    : (teamPlayers.length > 0 ? teamPlayers : allPlayers)
   const categories = [...new Set(playersToShow.map(p => p.market).filter(Boolean))]
 
   const filtered = activeCategory
@@ -40,23 +42,23 @@ export default function PlayersTab({ match }) {
     <div>
       {/* Team selector */}
       <div className="flex gap-1 mb-4 p-1 rounded-xl inline-flex" style={{ background: 'rgba(20,27,39,0.8)' }}>
-        {['home', 'away'].map(side => {
-          const label = side === 'home' ? match.home : match.away
-          const flag  = side === 'home' ? match.home_flag : match.away_flag
-          return (
-            <button
-              key={side}
-              onClick={() => setSubTeam(side)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeSubTeam === side ? 'text-body' : 'text-muted hover:text-body'
-              }`}
-              style={activeSubTeam === side ? { background: 'rgba(255,255,255,0.07)' } : {}}
-            >
-              {flag && <img className="w-4 h-4 rounded-sm object-cover" src={flag} alt="" />}
-              <span className="truncate max-w-[110px]">{label}</span>
-            </button>
-          )
-        })}
+        {[
+          { key: 'general', label: 'General' },
+          { key: 'home', label: match.home, flag: match.home_flag },
+          { key: 'away', label: match.away, flag: match.away_flag },
+        ].map(o => (
+          <button
+            key={o.key}
+            onClick={() => setSubTeam(o.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeSubTeam === o.key ? 'text-body' : 'text-muted hover:text-body'
+            }`}
+            style={activeSubTeam === o.key ? { background: 'rgba(255,255,255,0.07)' } : {}}
+          >
+            {o.flag && <img className="w-4 h-4 rounded-sm object-cover" src={o.flag} alt="" />}
+            <span className="truncate max-w-[110px]">{o.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Category filters */}
