@@ -156,7 +156,12 @@ def _1x2(M):
 
 # ---------- Elo -> 1X2 ----------
 def _fit_elo_model(win):
-    """Logit multinomial: [elo_diff, dummy_localia] -> resultado (1 local / 0 empate / -1 visita)."""
+    """Logit multinomial: [elo_diff, dummy_localia] -> resultado (1 local / 0 empate / -1 visita).
+
+    NOTA T10 (2026-07-01): se probo agregar |elo_diff| como feature para curvar la P(empate) (mas
+    empate en partidos parejos). REFUTADO: no mejora el log loss OOS (3 folds walk-forward: 0.8645
+    sin feature -> 0.8647 con, delta -0.0001, dentro del ruido). El sweep vuelve a decir 'no' (como
+    en jun-23): la P(empate) plana no se arregla con esta feature. Hipotesis descartada, no se cablea."""
     X = np.column_stack([(win.elo_home_pre - win.elo_away_pre).values,
                          np.where(win.neutral, 0.0, 1.0)])
     y = np.sign(win.home_score - win.away_score).astype(int)
