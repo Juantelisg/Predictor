@@ -231,13 +231,14 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
         return {"error": f"No reconozco: {local if not L else visita}"}
     r = soccer.predict(df_elo, rating, L, V, neutral=neutral, df_all=df, models=models)
     cp = calib.load()
-    cal = lambda p: round(calib.apply(p, soccer.VERSION, "1x2", cp), 4)
     b = r["blend"]
+    ch, cd, ca = calib.apply_1x2(b[1], b[0], b[-1], soccer.VERSION, cp)   # per-outcome + renorm (suma 1)
 
-    resultado = [{"label": f"Gana {L}", "prob": round(b[1], 4), "cal": cal(b[1])},
-                 {"label": "Empate", "prob": round(b[0], 4), "cal": cal(b[0])},
-                 {"label": f"Gana {V}", "prob": round(b[-1], 4), "cal": cal(b[-1])}]
-    doble = {"1X": round(b[1] + b[0], 4), "X2": round(b[0] + b[-1], 4), "12": round(b[1] + b[-1], 4)}
+    resultado = [{"label": f"Gana {L}", "prob": round(b[1], 4), "cal": round(ch, 4)},
+                 {"label": "Empate", "prob": round(b[0], 4), "cal": round(cd, 4)},
+                 {"label": f"Gana {V}", "prob": round(b[-1], 4), "cal": round(ca, 4)}]
+    # doble oportunidad DERIVADA del 1X2 calibrado (misma info; no se fitea un calibrador dc aparte)
+    doble = {"1X": round(ch + cd, 4), "X2": round(cd + ca, 4), "12": round(ch + ca, 4)}
     goles = {"over15": round(r["over15"], 4), "over25": round(r["over"], 4),
              "over35": round(r["over35"], 4), "btts": round(r["btts"], 4)}
     valla = {"home": round(r["cs_home"], 4), "away": round(r["cs_away"], 4)}

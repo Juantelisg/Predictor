@@ -59,9 +59,10 @@ def log_bets(date=None):
             if (date, v["home"], v["away"], side) in done:
                 continue
             rows.append({"date": date, "home": v["home"], "away": v["away"], "side": side,
-                         "p_model": r["p_model"], "p_market": r["p_market"], "edge": r["edge"],
-                         "odds": r["odds"], "tier": r["tier"],
-                         "stake": float(r.get("amount", 0.0)),     # Kelly real (0 si SOSPECHOSO/PASAR)
+                         "p_model": r["p_model"], "p_market": r["p_market"],
+                         "p_bet": r.get("p_bet"), "edge": r["edge"],
+                         "odds": r["odds"], "tier": r["tier"], "edge_version": "edge-v2",
+                         "stake": float(r.get("amount", 0.0)),     # Kelly real (0 si NO-APTO/SOSPECHOSO/PASAR)
                          "played": False, "ts": ts})
     _append(os.path.join(BETS_DIR, f"{date}.jsonl"), rows)
     print(f"  Registradas {len(rows)} candidatas ({date}) -> bets/{date}.jsonl")
@@ -87,6 +88,7 @@ def eval_bets():
         pnl = b["stake"] * (b["odds"] - 1) if won else -b["stake"]              # ROI real (Kelly)
         pnl_flat = NOTIONAL * (b["odds"] - 1) if won else -NOTIONAL             # ROI flat (mide el edge)
         rows.append({**{k: b[k] for k in ("date", "home", "away", "side", "edge", "odds", "tier", "stake")},
+                     "edge_version": b.get("edge_version", "edge-v1"),
                      "result": f"{h}-{a}", "won": won, "pnl": round(pnl, 2),
                      "pnl_flat": round(pnl_flat, 2), "evaluated_at": ts})
     if rows:
@@ -102,6 +104,16 @@ def report():
     real = [e for e in ev if e["stake"] > 0]                # las que realmente apostariamos (Kelly>0)
     st = sum(e["stake"] for e in real); pnl = sum(e["pnl"] for e in real)
     print(f"  FORWARD-TEST DEL EDGE  ({len(ev)} candidatas resueltas)\n")
+    ver = {}                                                # ROI flat por version de logica de edge
+    for e in ev:
+        ver.setdefault(e.get("edge_version", "edge-v1"), []).append(e)
+    if len(ver) > 1:
+        print("  Por version de edge (ROI flat = calidad del edge sin sizing):")
+        for v in sorted(ver):
+            es = ver[v]; n = len(es); hit = sum(x["won"] for x in es)
+            roi = sum(x["pnl_flat"] for x in es) / (n * NOTIONAL) * 100
+            print(f"    {v:<10} {n:>3} candidatas  aciertos {hit}/{n}  ROI flat {roi:+.1f}%")
+        print()
     print(f"  REAL (solo tiers apostables, Kelly): {len(real)} apuestas")
     if real:
         hit = sum(e["won"] for e in real)

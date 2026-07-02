@@ -21,6 +21,8 @@ import requests
 import soccer, elo, cache, calib
 
 MLB_VERSION = "mlb-ml-v1"   # version del modelo MLB moneyline (no mezclar con soccer)
+OOS_MIN_GAIN = 0.0          # una familia solo conserva su calibrador si NO degrada el Brier fuera
+                            # de muestra (walk-forward). delta = Brier_crudo_oos - Brier_cal_oos >= esto.
 
 sys.stdout.reconfigure(encoding="utf-8")
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -323,19 +325,42 @@ def evaluate():
     print(f"  Resueltas {len(rows)} predicciones nuevas. Pendientes (sin resultado aun): {pend}")
 
 
+def _oos_calibration(ev):
+    """Walk-forward del recalibrador (la prueba HONESTA): para cada fecha fitea el Platt SOLO con
+    evaluaciones anteriores y lo aplica a las de esa fecha. Brier crudo vs calibrado OOS por familia.
+    In-sample la calibracion 'siempre mejora'; esto dice si GENERALIZA (si no, es sobreajuste)."""
+    dates = sorted({e["date"] for e in ev})
+    raw, cal = {}, {}
+    for d in dates:
+        train = [e for e in ev if e["date"] < d]
+        params = calib.fit(train) if train else {}
+        for e in (e for e in ev if e["date"] == d):
+            f = e["market"].split(":")[0]
+            famkey = e["market"] if f == "1x2" else f
+            p, o = e["prob"], e["outcome"]
+            pc = calib.apply(p, e.get("model_version", "?"), famkey, params, context=calib.context_of(p))
+            raw.setdefault(f, [0, 0.0]); raw[f][0] += 1; raw[f][1] += (p - o) ** 2
+            cal.setdefault(f, [0, 0.0]); cal[f][0] += 1; cal[f][1] += (pc - o) ** 2
+    return raw, cal
+
+
 def report():
     ev = _read_all(EVAL_DIR)
     if not ev:
         print("  Sin evaluaciones todavia. Corre 'eval' despues de que se jueguen los partidos.")
         return
     cparams = calib.load()                         # recalibrador (vacio -> calibrada == cruda)
-    buckets, buckets_c, fam, sport_n = {}, {}, {}, {}
+    buckets, buckets_c, fam, sub, sport_n = {}, {}, {}, {}, {}
     brier = ll = brier_c = ll_c = 0.0
     for e in ev:
         p, o = e["prob"], e["outcome"]
         f = e["market"].split(":")[0]
-        pc = calib.apply(p, e.get("model_version", "?"), f, cparams,    # calibrada por familia + CONTEXTO
+        famkey = e["market"] if f == "1x2" else f                      # 1X2 se calibra POR OUTCOME
+        pc = calib.apply(p, e.get("model_version", "?"), famkey, cparams,  # calibrada por familia + CONTEXTO
                          context=calib.context_of(p))                   # (cae a familia si el contexto no tiene n)
+        if f == "1x2":                                                  # desglose por outcome (des-enmascara el empate)
+            sub.setdefault(e["market"], [0, 0.0, 0.0])
+            sub[e["market"]][0] += 1; sub[e["market"]][1] += p; sub[e["market"]][2] += o
         bi, bic = min(int(p * 10), 9), min(int(pc * 10), 9)
         buckets.setdefault(bi, [0, 0.0, 0])
         buckets[bi][0] += 1; buckets[bi][1] += p; buckets[bi][2] += o
@@ -370,6 +395,19 @@ def report():
     for f in sorted(fam):
         c, b, bc, sp, so = fam[f]
         print(f"    {f:<8} {c:>4} {b/c:>7.4f} {bc/c:>8.4f} {(sp-so)/c*100:>+6.1f}%")
+    if sub:
+        print(f"\n  1X2 por outcome (gap = pred-real; el empate se enmascara en el pool):")
+        for mk in sorted(sub):
+            c, sp, so = sub[mk]
+            print(f"    {mk:<12} {c:>4} gap {(sp-so)/c*100:>+6.1f}%")
+    raw, cal = _oos_calibration(ev)
+    print(f"\n  Calibracion OUT-OF-SAMPLE (walk-forward: Brier crudo vs calibrado; + = calibrar GENERALIZA):")
+    print(f"    {'familia':<8} {'n':>4} {'Brier_oos':>10} {'Brier_cal_oos':>14} {'delta':>8}")
+    for f in sorted(raw):
+        cr, br = raw[f]; cc, bc = cal[f]
+        delta = br / cr - bc / cc                           # + = calibrar mejora fuera de muestra
+        flag = "  ayuda" if delta > 0.002 else ("  DEGRADA" if delta < -0.002 else "  neutro")
+        print(f"    {f:<8} {cr:>4} {br/cr:>10.4f} {bc/cc:>14.4f} {delta:>+8.4f}{flag}")
 
 
 def calibrate():
@@ -379,12 +417,23 @@ def calibrate():
         print("  Sin evaluaciones para calibrar.")
         return
     params = calib.fit(ev)
+    # GATE OUT-OF-SAMPLE: una familia cuyo calibrador NO mejora fuera de muestra (walk-forward) ->
+    # identidad. Regla del PLAN ("si no mejora a la cruda OOS, no la usamos"): evita aplicar en
+    # produccion un ajuste que es sobreajuste in-sample (ej: ml/btts degradaban OOS).
+    raw, cal = _oos_calibration(ev)
+    degraded = {f for f in raw if raw[f][1] / raw[f][0] - cal[f][1] / cal[f][0] < OOS_MIN_GAIN}
+    for k in list(params):
+        fam = k.split("|")[1].split(":")[0] if "|" in k else None
+        if fam in degraded:
+            params[k] = {"a": 1.0, "b": 0.0, "n": params[k]["n"], "calib_version": calib.CALIB_VERSION}
     calib.save(params)
-    print(f"  Recalibradores fiteados (Platt, in-sample) -> data/calibrators.json")
+    print(f"  Recalibradores fiteados (Platt) + gate OOS -> data/calibrators.json")
+    if degraded:
+        print(f"  Familias con calibrador DESACTIVADO (degradaba fuera de muestra): {', '.join(sorted(degraded))}")
     for ver, pr in sorted(params.items()):
-        eff = "identidad (n insuficiente)" if pr["a"] == 1.0 and pr["b"] == 0.0 else \
+        eff = "identidad" if pr["a"] == 1.0 and pr["b"] == 0.0 else \
               f"a={pr['a']:.3f}  b={pr['b']:+.3f}  ({'estira' if pr['a'] > 1 else 'comprime'})"
-        print(f"    {ver:<16} n={pr['n']:<4} {eff}")
+        print(f"    {ver:<20} n={pr['n']:<4} {eff}")
     print("  Corre 'report' para ver Brier/log loss antes vs despues.")
 
 

@@ -35,3 +35,36 @@ def test_suspicious_huge_edge():
 def test_pass_when_no_edge():
     rows = edge.edge_market([0.51, 0.27, 0.22], [1.95, 3.6, 4.5], "1x2")
     assert rows[0]["tier"] == "PASAR"         # edge < MIN_EDGE
+
+
+def test_power_devig_shrinks_longshots():
+    odds = [1.95, 3.6, 4.5]
+    prop = edge.devig(odds)                   # proporcional
+    powr = edge.devig_power(odds)             # potencia
+    assert abs(sum(powr) - 1.0) < 1e-9
+    assert powr[2] < prop[2]                  # el longshot (cuota 4.5) queda MENOR con power
+    assert powr[0] > prop[0]                  # el favorito, mayor -> mata edges falsos de longshot
+
+
+def test_gate_draw_regime_blocks_1x2():
+    # cuotas con empate muy corto (fair del empate alta) = mercado priceando regimen -> NO-APTO
+    rows = edge.edge_market([0.45, 0.30, 0.25], [2.6, 2.6, 3.4], "1x2")
+    assert all(r["tier"] == "NO-APTO" for r in rows)
+    assert "regimen" in rows[0]["reason"]
+
+
+def test_gate_longshot_blocks_high_odds():
+    # outcome con cuota > ODDS_MAX -> NO-APTO aunque el modelo vea edge (overround 1.02, valido)
+    rows = edge.edge_market([0.35, 0.25, 0.40], [1.8, 3.8, 5.0], "1x2")
+    assert rows[2]["tier"] == "NO-APTO" and "longshot" in rows[2]["reason"]
+
+
+def test_gate_overround_blocks_corrupt():
+    rows = edge.edge_market([0.5, 0.3, 0.2], [1.3, 1.3, 1.3], "1x2")   # overround ~2.3, corrupto
+    assert all(r["tier"] == "NO-APTO" for r in rows)
+
+
+def test_p_bet_shrinks_toward_market():
+    rows = edge.edge_market([0.58, 0.25, 0.17], [1.95, 3.6, 4.5], "1x2")
+    r = rows[0]
+    assert r["p_market"] < r["p_bet"] < r["p_model"]   # p_bet a mitad de camino

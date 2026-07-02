@@ -22,6 +22,17 @@ QUALIFIED = {"1x2", "dc", "over"}      # 2026-06-21: las de n>=40 y bien calibra
 MIN_EDGE = 0.03                        # edge minimo (prob) para considerar un pick
 MAX_EDGE = 0.10                        # edge enorme vs mercado LIQUIDO = probable error del modelo,
                                        # NO valor. Flag SOSPECHOSO hasta forward-testear (no apostar a ciegas)
+W_BET = 0.5                            # peso del modelo en la prob de DECISION: p_bet = W_BET*p_cal +
+                                       # (1-W_BET)*p_fair. Descuenta el winner's curse (edge grande vs book
+                                       # sharp = mas probable error del modelo que valor). 0.5 hasta que el
+                                       # forward-test demuestre por familia que se le puede subir.
+OVERROUND_MIN = 1.00                   # overround crudo (suma de 1/cuota) valido; fuera de rango = corrupta.
+OVERROUND_MAX = 1.20
+DRAW_MAX = 0.33                        # fair del empate por encima de esto -> el mercado pricea un regimen
+                                       # (incentivo/info) que el modelo team-level NO ve -> 1X2 NO-APTO
+                                       # (no fabricar edge en AMBOS lados, causa raiz del ROI negativo).
+ODDS_MAX = 4.0                         # cuota mayor a esto = zona longshot: calibracion no probada y de-vig
+                                       # ruidoso -> NO-APTO hasta demostrar calibracion forward en esa zona.
 
 
 def devig(decimal_odds):
@@ -32,26 +43,57 @@ def devig(decimal_odds):
     return [i / s for i in imp]
 
 
+def devig_power(decimal_odds):
+    """De-vig por POTENCIA: fair_i = q_i^k con k tal que las fair sumen 1 (q_i = 1/cuota).
+    A diferencia del proporcional, saca MAS margen de los longshots (donde el book carga mas vig:
+    sesgo favorito-longshot). Sin esto, la fair de cuotas altas queda inflada -> edges falsos de
+    empate/longshot (la causa #1 del ROI -40% del forward-test)."""
+    q = [1.0 / o for o in decimal_odds]
+    lo, hi = 0.2, 10.0
+    for _ in range(80):                        # biseccion: sum(q_i^k) es decreciente en k -> k tal que =1
+        k = (lo + hi) / 2.0
+        if sum(qi ** k for qi in q) > 1.0:
+            lo = k
+        else:
+            hi = k
+    p = [qi ** ((lo + hi) / 2.0) for qi in q]
+    s = sum(p)
+    return [pi / s for pi in p]                # normaliza el residuo numerico
+
+
 def edge_market(model_probs, decimal_odds, family, bankroll=1000.0, confidence=0.7):
-    """model_probs y decimal_odds = listas alineadas por outcome de UN mercado.
-    Devuelve por outcome: prob modelo, prob mercado de-vigeada, edge, y veredicto/stake.
-    El GATE: si la familia no esta calificada -> veredicto NO-APOSTAR (falta calibracion)."""
-    fair = devig(decimal_odds)
+    """model_probs y decimal_odds = listas alineadas por outcome de UN mercado (para 1x2: home/draw/away).
+    Devuelve por outcome: prob modelo, prob mercado de-vigeada (power para 3-vias), p_bet (shrunk hacia
+    el mercado), edge, y veredicto/stake. Gates: mercado corrupto / regimen de empate / longshot /
+    familia no calibrada -> NO-APTO; el stake sale de p_bet (no del p_model crudo)."""
+    overround = sum(1.0 / o for o in decimal_odds)
+    three_way = len(decimal_odds) >= 3
+    fair = devig_power(decimal_odds) if three_way else devig(decimal_odds)
     qualified = family in QUALIFIED
+    block = None                               # bloqueo a nivel MERCADO (afecta todos los outcomes)
+    if not (OVERROUND_MIN <= overround <= OVERROUND_MAX):
+        block = f"overround {overround:.3f} fuera de [{OVERROUND_MIN:.2f},{OVERROUND_MAX:.2f}] (cuota corrupta)"
+    elif family == "1x2" and three_way and fair[1] > DRAW_MAX:
+        block = f"empate fair {fair[1]*100:.0f}% > {DRAW_MAX*100:.0f}% = mercado pricea regimen que el modelo no ve"
     out = []
     for pm, d, pmk in zip(model_probs, decimal_odds, fair):
         e = pm - pmk
-        if not qualified:
+        p_bet = W_BET * pm + (1 - W_BET) * pmk       # prob de decision: shrunk hacia el mercado sharp
+        if block:
+            verdict = {"tier": "NO-APTO", "reason": block}
+        elif not qualified:
             verdict = {"tier": "NO-APTO", "reason": f"familia '{family}' sin calibracion suficiente"}
+        elif d > ODDS_MAX:
+            verdict = {"tier": "NO-APTO", "reason": f"cuota {d} > {ODDS_MAX:.1f} (longshot: calibracion no probada)"}
         elif e < MIN_EDGE:
             verdict = {"tier": "PASAR", "reason": f"edge {e*100:+.1f}% < {MIN_EDGE*100:.0f}%"}
         elif e > MAX_EDGE:
             verdict = {"tier": "SOSPECHOSO", "reason": f"edge {e*100:+.1f}% > {MAX_EDGE*100:.0f}% vs book liquido "
                        f"= probable error del modelo. Forward-test antes de creerle"}
         else:
-            verdict = stake.stake(pm, d, confidence, bankroll)   # edge real -> staking Kelly
-        out.append({"p_model": pm, "p_market": round(pmk, 4), "edge": round(e, 4),
-                    "odds": d, **verdict})
+            verdict = stake.stake(p_bet, d, confidence, bankroll)   # stake con la prob SHRUNK, no la cruda
+        out.append({"p_model": pm, "p_market": round(pmk, 4), "p_bet": round(p_bet, 4),
+                    "edge": round(e, 4), "odds": d, **verdict})
     return out
 
 

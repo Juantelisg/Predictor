@@ -17,14 +17,16 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import db
 
-CONF_MIN, CONF_MAX = 0.40, 0.90    # piso (= MIN_CONF de stake: por debajo, PASAR) y techo
-K = 60                             # half-saturacion: n=K -> a mitad de camino del techo
+CONF_MIN, CONF_MAX = 0.40, 0.90    # piso (por debajo de MIN_CONF de stake, PASAR) y techo
+K = 25                             # half-saturacion en PARTIDOS: n=K -> a mitad de camino del techo
 
 
 def effective_n(family, version=None, con=None):
-    """Cuantas evaluaciones respaldan esa familia (y version si se da). Es la muestra que
-    sostiene la calibracion -> proxy honesto de cuanto 'sabemos' del mercado."""
-    sql = "SELECT COUNT(*) AS n FROM evaluations WHERE market LIKE ?"
+    """Cuantos PARTIDOS UNICOS respaldan esa familia (y version si se da). Antes contaba FILAS
+    de evaluations (~3-12 por partido) -> inflaba la muestra. Un partido = una observacion
+    independiente; sus mercados estan correlacionados. Proxy honesto de cuanto 'sabemos'."""
+    sql = ("SELECT COUNT(DISTINCT date || '|' || home || '|' || away) AS n "
+           "FROM evaluations WHERE market LIKE ?")
     params = [f"{family}:%"]
     if version:
         sql += " AND model_version = ?"

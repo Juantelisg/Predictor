@@ -17,7 +17,8 @@ import sys
 KELLY_BASE = 0.5     # tope: nunca mas que half-Kelly (la confianza lo baja desde aca)
 CAP = 0.05           # nunca mas del 5% del bankroll en un solo ticket
 MIN_EV = 0.02        # EV por unidad < 2% -> pasar (no vale la varianza)
-MIN_CONF = 0.40      # confianza por debajo de esto -> pasar
+MIN_CONF = 0.45      # confianza por debajo de esto -> pasar (> CONF_MIN=0.40 de uncertainty, para
+                     # que el piso data-starved REALMENTE gatille PASAR; antes 0.40 == piso -> nunca disparaba)
 
 
 def stake(p, decimal_odds, confidence, bankroll=1000.0):
