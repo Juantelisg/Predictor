@@ -14,6 +14,7 @@ import soccer, elo
 sys.stdout.reconfigure(encoding="utf-8")
 
 WC_START = pd.Timestamp("2026-06-11")     # primer dia del Mundial 2026
+GOALS_K = 20                              # shrink del factor de goles del torneo hacia 1.0 (T6)
 
 
 def wc_fixtures(df, start=WC_START, end=None):
@@ -26,21 +27,27 @@ def wc_fixtures(df, start=WC_START, end=None):
     return m.sort_values("date").reset_index(drop=True)
 
 
-def _predict(models, eh, ea, home, away, neutral, rho, w):
-    """Misma logica que soccer.evaluate, con Elo PRE-partido (leak-free)."""
+def _predict(models, eh, ea, home, away, neutral, rho, w, goals_factor=1.0):
+    """Misma logica que soccer.evaluate, con Elo PRE-partido (leak-free). goals_factor escala SOLO
+    los goles (over/marcador); el 1X2 sale de la matriz BASE (ancla). Devuelve tambien el total
+    esperado escalado y el BASE (este ultimo alimenta la estimacion walk-forward del factor)."""
     pois, cols, elo_m, sup = models
     ish = 0 if neutral else 1
-    lh, la = soccer._lambdas(pois, cols, sup, eh, ea, home, away, ish)
-    M = soccer._matrix(lh, la, rho)
+    lh, la = soccer._lambdas(pois, cols, sup, eh, ea, home, away, ish)   # BASE
+    M = soccer._matrix(lh, la, rho)                                      # base -> 1X2
     ez = soccer._elo_1x2(elo_m, eh, ea, not neutral)
     pz = soccer._1x2(M)
     blend = {o: w * ez[o] + (1 - w) * pz[o] for o in (1, 0, -1)}
-    sc = np.unravel_index(np.argmax(M), M.shape)
-    return blend, soccer._over25(M), lh, la, (int(sc[0]), int(sc[1]))
+    Mg = soccer._matrix(lh * goals_factor, la * goals_factor, rho) if goals_factor != 1.0 else M
+    sc = np.unravel_index(np.argmax(Mg), Mg.shape)
+    return blend, soccer._over25(Mg), lh, la, (int(sc[0]), int(sc[1])), (lh + la) * goals_factor
 
 
-def backtest(start=WC_START, end=None, rho=soccer.RHO, w=soccer.ELO_W, alpha=None, df_elo=None):
-    """Devuelve dict de metricas + filas por partido. Reentrena por FECHA (sin fuga)."""
+def backtest(start=WC_START, end=None, rho=soccer.RHO, w=soccer.ELO_W, alpha=None, df_elo=None,
+             goals_regime=False):
+    """Devuelve dict de metricas + filas por partido. Reentrena por FECHA (sin fuga).
+    goals_regime=True aplica el factor de nivel de goles del torneo (T6) estimado walk-forward:
+    cada dia usa la razon goles_reales/esperados de los dias ANTERIORES (shrunk GOALS_K), sin fuga."""
     if alpha is not None:
         old_alpha, soccer.ALPHA = soccer.ALPHA, alpha   # override temporal para el sweep
     try:
@@ -49,6 +56,7 @@ def backtest(start=WC_START, end=None, rho=soccer.RHO, w=soccer.ELO_W, alpha=Non
             df_elo, _ = elo.compute(df)
         fx = wc_fixtures(df_elo, start, end)
         rows = []
+        prior_real = prior_exp = prior_n = 0.0          # acumulador walk-forward del factor de goles
         for d, day in fx.groupby("date"):
             models = soccer._fit_models(df_elo, d, d)[:4]                # entrena con date < d
             win = models[4] if len(models) > 4 else None
@@ -57,12 +65,16 @@ def backtest(start=WC_START, end=None, rho=soccer.RHO, w=soccer.ELO_W, alpha=Non
             base = {1: (r == 1).mean(), 0: (r == 0).mean(), -1: (r == -1).mean()}
             ob = float(((train.home_score + train.away_score) >= 3).mean())
             known = set(train.home_team) | set(train.away_team)
+            gf = 1.0
+            if goals_regime and prior_exp > 0:          # factor de SOLO dias anteriores (leak-free)
+                gf = (prior_n * (prior_real / prior_exp) + GOALS_K) / (prior_n + GOALS_K)
+            day_real = day_exp = day_n = 0.0
             for g in day.itertuples():
                 if g.home_team not in known or g.away_team not in known:
                     continue
                 neutral = bool(g.neutral)
-                blend, ov25, lh, la, modal = _predict(models, g.elo_home_pre, g.elo_away_pre,
-                                                       g.home_team, g.away_team, neutral, rho, w)
+                blend, ov25, lh, la, modal, exp_sc = _predict(models, g.elo_home_pre, g.elo_away_pre,
+                                                              g.home_team, g.away_team, neutral, rho, w, gf)
                 s = int(np.sign(g.home_score - g.away_score))
                 over = (g.home_score + g.away_score) >= 3
                 fav = max(blend, key=blend.get)
@@ -72,8 +84,12 @@ def backtest(start=WC_START, end=None, rho=soccer.RHO, w=soccer.ELO_W, alpha=Non
                     p_home=blend[1], p_draw=blend[0], p_away=blend[-1], p_s=blend[s],
                     fav=fav, p_fav=blend[fav], fav_hit=int(fav == s),
                     base_s=base[s], p_over=ov25, over=int(over), ob=ob,
-                    lh=lh, la=la, exp_total=lh + la, modal=modal,
+                    lh=lh, la=la, exp_total=exp_sc, modal=modal,
                     exact=int(modal == (int(g.home_score), int(g.away_score)))))
+                day_real += g.home_score + g.away_score      # exp BASE (lh,la ya vienen sin escalar)
+                day_exp += lh + la
+                day_n += 1
+            prior_real += day_real; prior_exp += day_exp; prior_n += day_n
         return _aggregate(rows)
     finally:
         if alpha is not None:
@@ -153,8 +169,9 @@ def main():
         loc = "neutral" if bool(g.neutral) else "local"
         print(f"    {g.date.date()}  {g.home_team} vs {g.away_team}  ({loc})")
 
-    # ----- PASOS 2-4: predecir, revelar, evaluar
-    M = backtest(WC_START, end, df_elo=df_elo)
+    # ----- PASOS 2-4: predecir, revelar, evaluar (con factor de nivel de goles del torneo, T6)
+    M = backtest(WC_START, end, df_elo=df_elo, goals_regime=True)
+    M0 = backtest(WC_START, end, df_elo=df_elo, goals_regime=False)   # base (para comparar el sesgo)
     R = M["R"]
 
     print("\n[2-3] PREDICCION DE CONTROL vs RESULTADO REAL (sin fuga temporal):")
@@ -193,6 +210,8 @@ def main():
           f"-> {df_draw*100:+.1f} pts")
     print(f"      Over 2.5  : predigo {M['p_over_mean']*100:.1f}%  | ocurre {M['over_rate']*100:.1f}%  "
           f"-> {df_over*100:+.1f} pts ({'alcista' if df_over>0.02 else 'bajista' if df_over<-0.02 else 'OK'})")
+    print(f"      [T6 factor de goles: base espera {M0['exp_total_mean']:.2f} (sesgo {M0['exp_total_mean']-M0['total_mean']:+.2f}), "
+          f"over base ll {M0['ll_over']:.3f} -> con factor ll {M['ll_over']:.3f}; 1X2 base ll {M0['ll_model']:.3f} -> {M['ll_model']:.3f}]")
     print(f"      Goles tot : espero  {M['exp_total_mean']:.2f}   | real    {M['total_mean']:.2f}   "
           f"-> {df_tot:+.2f} goles")
     print(f"\n    Marcador exacto (reality-check): {M['exact_rate']*100:.1f}%  "

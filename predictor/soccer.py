@@ -228,21 +228,27 @@ def evaluate(df_elo, end, test_from, test_to, rho=RHO, w=ELO_W):
                 ll_over=llo / n, ll_over_base=llob / n)
 
 
-def _predict_with(models, rating, local, visita, neutral=True, rho=RHO, w=ELO_W):
-    """Predice un partido con modelos YA ajustados (no re-entrena por cada fixture)."""
+def _predict_with(models, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, goals_factor=1.0):
+    """Predice un partido con modelos YA ajustados (no re-entrena por cada fixture).
+    goals_factor = multiplicador de NIVEL de goles del torneo (regime.py, T6). Default 1.0 = sin
+    cambio (el motor base y el holdout quedan IDENTICOS). Cuando != 1.0, SOLO los mercados de goles
+    (over/BTTS/valla/marcador) usan la matriz escalada; el 1X2 sale de la matriz BASE (anclado en el
+    Elo) -> el factor corrige el nivel de goles sin tocar la probabilidad de resultado."""
     pois, cols, elo_m, sup = models
     ish = 0 if neutral else 1
     eh, ea = rating.get(local, elo.INIT), rating.get(visita, elo.INIT)
     lh, la = _lambdas(pois, cols, sup, eh, ea, local, visita, ish)    # goles coherentes con el Elo
-    M = _matrix(lh, la, rho)
+    M = _matrix(lh, la, rho)                                          # matriz BASE (1X2 sale de aca)
     ez = _elo_1x2(elo_m, eh, ea, not neutral)
     pz = _1x2(M)
-    blend = {o: w * ez[o] + (1 - w) * pz[o] for o in (1, 0, -1)}
-    over = lambda t: float(sum(M[i, j] for i in range(M.shape[0]) for j in range(M.shape[1]) if i + j >= t))
-    sc = np.unravel_index(np.argmax(M), M.shape)
-    btts, o25, gap = float(M[1:, 1:].sum()), over(3), eh - ea
-    cs_home = float(M[:, 0].sum())   # P(away_goals=0) = local valla invicta
-    cs_away = float(M[0, :].sum())   # P(home_goals=0) = visita valla invicta
+    blend = {o: w * ez[o] + (1 - w) * pz[o] for o in (1, 0, -1)}      # 1X2: ancla, NO se toca
+    lh, la = lh * goals_factor, la * goals_factor                     # nivel de goles del torneo
+    Mg = _matrix(lh, la, rho) if goals_factor != 1.0 else M           # matriz de GOLES (escalada)
+    over = lambda t: float(sum(Mg[i, j] for i in range(Mg.shape[0]) for j in range(Mg.shape[1]) if i + j >= t))
+    sc = np.unravel_index(np.argmax(Mg), Mg.shape)
+    btts, o25, gap = float(Mg[1:, 1:].sum()), over(3), eh - ea
+    cs_home = float(Mg[:, 0].sum())   # P(away_goals=0) = local valla invicta
+    cs_away = float(Mg[0, :].sum())   # P(home_goals=0) = visita valla invicta
     fav_o = max(blend, key=blend.get)
     prob_top = blend[fav_o]
     ins = [
@@ -266,11 +272,12 @@ def fit_today(df_elo):
     return _fit_models(df_elo, today + pd.Timedelta(days=1), today)[:4]
 
 
-def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_all=None, models=None):
+def predict(df_elo, rating, local, visita, neutral=True, rho=RHO, w=ELO_W, df_all=None, models=None,
+            goals_factor=1.0):
     today = pd.Timestamp(datetime.date.today())
     if models is None:                       # fit on-demand; pasar models ya fiteados para no re-fitear
         models = fit_today(df_elo)
-    r = _predict_with(models, rating, local, visita, neutral, rho, w)
+    r = _predict_with(models, rating, local, visita, neutral, rho, w, goals_factor)
     if df_all is not None:
         r["form_home"] = _form_L5(df_all, local, today)
         r["form_away"] = _form_L5(df_all, visita, today)

@@ -107,7 +107,7 @@ def _statsbomb_markets(local, visita, date, ts):
     return rows
 
 
-def log(local, visita, neutral=True, date=None):
+def log(local, visita, neutral=True, date=None, goals_factor=1.0):
     date = date or datetime.date.today().isoformat()
     df = soccer.load()
     df_elo, rating = elo.compute(df)
@@ -124,7 +124,7 @@ def log(local, visita, neutral=True, date=None):
         if (L, V) in done:
             print(f"  Ya logueado: {L} vs {V} ({date}) -> skip")
             return
-    r = soccer.predict(df_elo, rating, L, V, neutral=neutral)
+    r = soccer.predict(df_elo, rating, L, V, neutral=neutral, goals_factor=goals_factor)  # T6: goles del torneo
     mk = _markets(r, soccer._matrix(r["lh"], r["la"], soccer.RHO))
     ts = datetime.datetime.now().isoformat(timespec="seconds")
     rows = [_row(date, L, V, k, p, soccer.VERSION, ts, neutral) for k, p in mk.items()]
@@ -153,9 +153,15 @@ def log_wc(date=None):
     if not pend:
         print(f"  WC {date}: nada por loguear ({len(games)} partidos, ninguno SCHEDULED / ya empezaron).")
         return
-    print(f"  WC {date}: logueando {len(pend)} partido(s) por jugar (pre-partido)...")
+    gf = 1.0                                           # factor de nivel de goles del torneo (T6)
+    try:
+        import regime
+        gf = regime.goals_factor(before_date=date)[0]  # walk-forward: solo partidos anteriores
+    except Exception:
+        pass
+    print(f"  WC {date}: logueando {len(pend)} partido(s) por jugar (pre-partido, goals_factor={gf:.3f})...")
     for g in pend:
-        log(g["home"], g["away"], neutral=True, date=date)
+        log(g["home"], g["away"], neutral=True, date=date, goals_factor=gf)
 
 
 def log_mlb(date=None):

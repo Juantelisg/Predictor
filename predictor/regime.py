@@ -23,8 +23,9 @@ import statsbomb_data as sb
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 EVAL_DIR = os.path.join(ROOT, "evaluations")
-K = 6                      # shrink del factor hacia 1.0 por cantidad de partidos observados (EB).
+K = 6                      # shrink del factor cards/corners hacia 1.0 por partidos observados (EB).
                            # Balance: corrige rapido cuando hay muestra, humilde al arranque del torneo.
+GOALS_K = 20               # shrink del factor de GOLES (mas conservador: pega a 4 mercados a la vez).
 LINES = {"cards": [2.5, 3.5, 4.5], "corners": [8.5, 9.5, 10.5]}
 _OVERKEY = {"cards": {2.5: "over25", 3.5: "over35", 4.5: "over45"},
             "corners": {8.5: "over85", 9.5: "over95", 10.5: "over105"}}
@@ -87,6 +88,42 @@ def predict(kind, home, away, before_date=None, evals=None):
     """Prediccion v2 (con factor de torneo) de cards/corners para un partido. Mismo dict que sb."""
     f, _ = tournament_factor(kind, before_date, evals)
     return sb.predict_corners(home, away, factor=f) if kind == "corners" else sb.predict_cards(home, away, factor=f)
+
+
+# ------------------------------------------------------------------ factor de GOLES del torneo
+def goals_factor(before_date=None):
+    """Multiplicador de nivel de GOLES del WC (razon goles_reales / goles_esperados por el modelo),
+    shrunk hacia 1.0 con GOALS_K. Corrige el sesgo bajista del Poisson (espera ~2.5, el WC da ~2.9).
+    Se aplica SOLO a los mercados de goles (no al 1X2). Devuelve [factor, n_partidos].
+
+    El 'esperado' se estima con un fit unico del modelo actual (rapido) -> es calibracion de NIVEL
+    agregada, no una prediccion; la leve fuga no afecta la validez de la prediccion futura. La
+    validacion estricta walk-forward vive en backtest_wc (goals_regime). Cacheado (los WC cierran
+    de a poco por dia)."""
+    def _compute():
+        import pandas as pd
+        import soccer, elo, backtest_wc
+        df = soccer.load()
+        df_elo, rating = elo.compute(df)
+        fx = backtest_wc.wc_fixtures(df_elo).dropna(subset=["home_score", "away_score"])
+        if before_date:
+            fx = fx[fx["date"] < pd.Timestamp(before_date)]
+        if len(fx) == 0:
+            return [1.0, 0]
+        models = soccer.fit_today(df_elo)
+        sr = se = 0.0
+        for g in fx.itertuples():
+            r = soccer._predict_with(models, rating, g.home_team, g.away_team, neutral=bool(g.neutral))
+            se += r["lh"] + r["la"]
+            sr += g.home_score + g.away_score
+        if se <= 0:
+            return [1.0, 0]
+        n = len(fx)
+        m_hat = sr / se
+        return [(n * m_hat + GOALS_K * 1.0) / (n + GOALS_K), n]
+
+    import cache
+    return cache.cached(f"wc_goals_factor:{before_date or 'today'}", cache.TTL_RESULTS, _compute)
 
 
 # ------------------------------------------------------------------ backtest walk-forward v1 vs v2

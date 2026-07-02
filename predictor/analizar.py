@@ -229,7 +229,14 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
     L, V = soccer.resolve(local, teams), soccer.resolve(visita, teams)
     if not L or not V:
         return {"error": f"No reconozco: {local if not L else visita}"}
-    r = soccer.predict(df_elo, rating, L, V, neutral=neutral, df_all=df, models=models)
+    gf = 1.0                                          # factor de nivel de goles del torneo (T6, solo WC)
+    if league == "wc":
+        try:
+            import regime
+            gf = regime.goals_factor(before_date=date)[0]
+        except Exception:
+            pass
+    r = soccer.predict(df_elo, rating, L, V, neutral=neutral, df_all=df, models=models, goals_factor=gf)
     cp = calib.load()
     b = r["blend"]
     ch, cd, ca = calib.apply_1x2(b[1], b[0], b[-1], soccer.VERSION, cp)   # per-outcome + renorm (suma 1)
