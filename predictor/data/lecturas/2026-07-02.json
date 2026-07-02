@@ -1,0 +1,50 @@
+{
+ "20260702-AUT-ESP": {
+  "summary": "España es favorita clara pero llega golpeada en ataque (Nico Williams afuera, Pino en duda); Austria, sin bajas y ordenada, no es trámite.",
+  "context": [
+   "Sede: SoFi Stadium, California · 16:00 ART · cruce de eliminación directa, cancha neutral.",
+   "España sacó 7 de 9 en el Grupo H; Austria terminó 2ª del Grupo J (4 pts) detrás de Argentina. Mata-mata: el que pierde, afuera.",
+   "Bajas España: Nico Williams OUT (lesión de aductor) — titular clave por afuera; Yeremy Pino en duda (clavícula). Merma real en el ataque de las bandas.",
+   "XI probable España (con Nico afuera): Simón; Llorente, Cubarsí, Laporte, Cucurella; Merino, Rodri, Pedri; Yamal, Oyarzabal, Baena. Yamal juega pese a gestionar una molestia muscular.",
+   "Austria sin bajas; XI probable: A. Schlager; Posch, Lienhart, Alaba, Mwene; Seiwald, X. Schlager; Laimer, Schmid, Sabitzer; Arnautović. Equipo ordenado que ya sumó 4 puntos en el grupo.",
+   "Modelo: España ~81% (el recalibrador subconfía en favoritos, pero las bajas ofensivas justifican no exagerar). Over 1.5 sólido (~90%); Over 2.5 (58%) y BTTS (41%) son moneda — Austria puede hacerlo áspero."
+  ],
+  "sources": [
+   {"title": "Sports Mole · team news / XI probables", "url": "https://www.sportsmole.co.uk/football/spain/world-cup-2026/team-news/spain-vs-austria-injury-suspension-lists-predicted-xis_600400.html"},
+   {"title": "Bolavip · por qué no juega Nico Williams", "url": "https://bolavip.com/en/world-cup/why-isnt-nico-williams-playing-today-for-spain-vs-austria-at-the-2026-world-cup"},
+   {"title": "ESPN · lesión de Nico Williams", "url": "https://www.espn.com/soccer/story/_/id/49200729/spain-nico-williams-injury-yeremy-pino-2026-world-cup"}
+  ],
+  "generated_at": "2026-07-02",
+  "disponibilidad": {
+   "home": {
+    "bajas": [
+     {"jugador": "Nico Williams", "pos": "F", "impacto": "clave"},
+     {"jugador": "Yeremy Pino", "pos": "F", "impacto": "suplente"}
+    ],
+    "motivacion": "must-win"
+   },
+   "away": {"bajas": [], "motivacion": "must-win"}
+  }
+ },
+ "20260702-CRO-POR": {
+  "summary": "Portugal es leve favorito en un choque parejo de europeos; ambos llegan sanos y con sus figuras (Ronaldo / Modrić) en lo que puede ser su último Mundial.",
+  "context": [
+   "Cruce de eliminación directa (ronda de 32) · 20:00 ART · cancha neutral.",
+   "Portugal rotó en fase de grupos y recupera titulares para el mata-mata; Croacia llega de vencer a Ghana en la última fecha. Ambos clasificaron sin sobresaltos.",
+   "Portugal sin lesiones: Martínez recupera primeras figuras y João Neves vuelve al XI. Ronaldo lidera el ataque (2 goles en el torneo).",
+   "Croacia sin bajas nuevas: Gvardiol vuelve al lateral izquierdo y Perišić se adelanta al ataque; Modrić y Kovačić manejan el medio.",
+   "XI probables — Portugal: Costa; Cancelo, Dias, Veiga, Mendes; Vitinha, J. Neves; Neto, Fernandes, Félix; Ronaldo. Croacia: Livaković; Stanišić, Sutalo, Pongračić, Gvardiol; Sučić, Modrić, Kovačić; Baturina, Budimir, Perišić.",
+   "Modelo: Portugal ~58% (leve favorito); el empate (30%) es escenario muy vivo entre dos parejos. Over 1.5 (89%) es el pick más firme; BTTS 58% refleja que Croacia rara vez se queda en cero."
+  ],
+  "sources": [
+   {"title": "Sports Mole · team news / XI probables", "url": "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/team-news/portugal-vs-croatia-injury-suspension-list-predicted-xis_600440.html"},
+   {"title": "Yahoo Sports · lineups y team news", "url": "https://uk.sports.yahoo.com/news/portugal-vs-croatia-lineups-predicted-120904031.html"},
+   {"title": "Sports Illustrated · preview y lineups", "url": "https://www.si.com/soccer/portugal-vs-croatia-world-cup-preview-predictions-lineups-7-2-26"}
+  ],
+  "generated_at": "2026-07-02",
+  "disponibilidad": {
+   "home": {"bajas": [], "motivacion": "must-win"},
+   "away": {"bajas": [], "motivacion": "must-win"}
+  }
+ }
+}
