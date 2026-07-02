@@ -27,8 +27,17 @@ def _ctx():
     return df, df_elo, rating, soccer.fit_today(df_elo)
 
 
-def simulate(home, away, n=50000, neutral=True, ctx=None, seed=0, dominance_k=0.0):
-    """Devuelve dict con: marcadores (hg, ag) y un bool array por mercado (la 'sim')."""
+def _couple(base, k, abs_margin):
+    """Lambda de corners/cards ACOPLADA a la dominancia: base * exp(k*|margen|). k=0 -> sin acople
+    (marginales independientes). k!=0 -> el conteo depende del marcador simulado (correlacion real)."""
+    return np.maximum(base * np.exp(k * np.asarray(abs_margin, float)), 1e-9)
+
+
+def simulate(home, away, n=50000, neutral=True, ctx=None, seed=0, corner_k=0.0, card_k=0.0):
+    """Devuelve dict con: marcadores (hg, ag) y un bool array por mercado (la 'sim').
+    corner_k / card_k = acople de corners/cards a la dominancia (|margen|). Default 0 (independencia):
+    medido en los boxscores del WC2026 (n=24) el acople es indistinguible de 0 (|r|<0.2) -> no se
+    cablea un acople espurio. El MECANISMO ya funciona (bug '*0' corregido) para cuando haya volumen."""
     df, df_elo, rating, models = ctx or _ctx()
     teams = set(df.home_team) | set(df.away_team)
     L, V = soccer.resolve(home, teams), soccer.resolve(away, teams)
@@ -58,13 +67,14 @@ def simulate(home, away, n=50000, neutral=True, ctx=None, seed=0, dominance_k=0.
         "under2.5": tot < 3, "btts": (hg >= 1) & (ag >= 1),
         "cs_home": ag == 0, "cs_away": hg == 0,
     }
-    # cornes / tarjetas: media StatsBomb, opcionalmente acoplada a la dominancia (default OFF)
+    # cornes / tarjetas: media del torneo (regime, factor T5) acoplada a la dominancia (default 0)
     try:
-        import statsbomb_data as sb
-        cm = sb.predict_corners(L, V)["total_exp"]
-        km = sb.predict_cards(L, V)["total_exp"]
-        corners = rng.poisson(cm * np.exp(-dominance_k * 0 * np.abs(margin)) + 1e-9, n)
-        cards = rng.poisson(km * np.exp(-dominance_k * np.abs(margin)) + 1e-9, n)
+        import regime
+        cm = regime.predict("corners", L, V)["total_exp"]
+        km = regime.predict("cards", L, V)["total_exp"]
+        am = np.abs(margin)
+        corners = rng.poisson(_couple(cm, corner_k, am), n)   # antes: '* 0' mataba el acople (bug)
+        cards = rng.poisson(_couple(km, card_k, am), n)
         for ln in (8.5, 9.5, 10.5):
             sims[f"corners_over{ln}"] = corners > ln
         for ln in (2.5, 3.5, 4.5):
@@ -126,8 +136,8 @@ def main():
         print(f"    P conjunta (simulada, correlacion real) : {pct(j)}")
         print(f"    P producto de marginales (INGENUO)      : {pct(p)}")
         print(f"    Lift (joint/prod): {lift:.2f}x  -> multiplicar {'SUBestima' if lift>1 else 'SOBREestima'} el combo")
-    print("\n  Educativo, sin cuotas. Cornes/tarjetas: hoy independientes de la dominancia")
-    print("  (acople = parametro dominance_k, a calibrar con volumen).\n")
+    print("\n  Educativo, sin cuotas. Cornes/tarjetas: independencia de la dominancia por defecto")
+    print("  (acople medido ~0 con n=24 en el WC; params corner_k/card_k, activan con volumen).\n")
 
 
 if __name__ == "__main__":
