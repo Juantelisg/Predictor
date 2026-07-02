@@ -141,6 +141,52 @@ def log_props(date=None, league="wc"):
               f"edge {r['edge']*100:+.1f}% ({r['n_books']} books)")
 
 
+def _won(stat, line, side):
+    """1 si el prop pego: over -> stat > linea; under -> stat < linea (lineas .5, sin push)."""
+    return int((stat > line) == (side == "over"))
+
+
+def _resolve_rows(flags, done, stat_getter, ts):
+    """Nucleo PURO de la resolucion (testeable por inyeccion): por cada flag +EV no resuelto, pide
+    el stat real a stat_getter(who, team, market, line, date) y arma la fila de props_evals. Si el
+    getter devuelve None (stat no disponible aun) -> queda pendiente."""
+    N = 10.0
+    rows = []
+    for f in flags:
+        if f.get("verdict") != "FLAG":
+            continue
+        key = (f["date"], f["who"], f["market"], f["line"], f["side"])
+        if key in done:
+            continue
+        stat = stat_getter(f["who"], f.get("team", ""), f["market"], f["line"], f["date"])
+        if stat is None:
+            continue
+        won = _won(stat, f["line"], f["side"])
+        pnl = N * (f["best_odds"] - 1) if won else -N
+        rows.append({**{k: f[k] for k in ("date", "who", "market", "line", "side", "best_odds", "edge")},
+                     "stat": stat, "won": won, "pnl_flat": round(pnl, 2), "evaluated_at": ts})
+    return rows
+
+
+def _no_stat(*a):
+    """Getter por defecto: aun no hay fuente per-fixture de stats de jugador cableada. Los game-logs
+    de soccer_players AGREGAN (no exponen el partido puntual) -> se inyecta un getter real cuando
+    exista una fuente per-partido. Hasta entonces, todo queda pendiente (el forward-test acumula)."""
+    return None
+
+
+def resolve_props(stat_getter=_no_stat, date=None):
+    """Resuelve los flags +EV pendientes contra el stat real (via stat_getter) -> props_evals."""
+    ts = datetime.datetime.now().isoformat(timespec="seconds")
+    flags = [f for f in _read(FLAGS_DIR) if f.get("verdict") == "FLAG"]
+    done = {(e["date"], e["who"], e["market"], e["line"], e["side"]) for e in _read(EVAL_DIR)}
+    rows = _resolve_rows(flags, done, stat_getter, ts)
+    if rows:
+        _append(os.path.join(EVAL_DIR, f"{datetime.date.today().isoformat()}.jsonl"), rows)
+    print(f"  Props resueltos: {len(rows)} nuevos  |  pendientes: {len(flags) - len(done) - len(rows)}")
+    return len(rows)
+
+
 def report():
     ev = _read(EVAL_DIR)
     flags = [f for f in _read(FLAGS_DIR) if f["verdict"] == "FLAG"]
@@ -170,6 +216,9 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "wc"
     if cmd == "log":
         log_props(sys.argv[2] if len(sys.argv) > 2 else None)
+        return
+    if cmd == "resolve":
+        resolve_props()
         return
     if cmd == "report":
         report()

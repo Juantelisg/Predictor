@@ -7,10 +7,10 @@ cd /d "%~dp0"
 set "PY=C:\Users\Juant\AppData\Local\Python\bin\python.exe"
 
 REM retro en segundo plano (no bloquea el dashboard): loguea los WC de hoy AUN no jugados
-REM (pre-partido, anti-leakage), resuelve lo ya jugado y actualiza la calibracion -> retro_last.txt
+REM (pre-partido, anti-leakage), resuelve lo ya jugado y actualiza la calibracion -> loop_last.txt (UTF-8)
 echo.
 echo   Loop completo (calibracion + edge + bankroll + CLV + persistencia) -^> predictor\loop_last.txt  +  backtest Mundial -^> predictor\backtest_wc_last.txt
-start "" /b powershell -NoProfile -Command "$p='%PY%'; & $p predictor\loop.py > predictor\loop_last.txt; & $p predictor\backtest_wc.py > predictor\backtest_wc_last.txt"
+start "" /b powershell -NoProfile -Command "$p='%PY%'; & $p predictor\loop.py 2>&1 | Out-File -Encoding utf8 predictor\loop_last.txt; & $p predictor\backtest_wc.py 2>&1 | Out-File -Encoding utf8 predictor\backtest_wc_last.txt"
 
 echo.
 echo   Preparando analisis del dia...

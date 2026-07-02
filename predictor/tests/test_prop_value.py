@@ -61,6 +61,30 @@ def test_evaluate_no_consensus_returns_empty():
     assert prop_value.evaluate_prop(row) == []
 
 
+def test_won_over_under():
+    assert prop_value._won(1, 0.5, "over") == 1 and prop_value._won(0, 0.5, "over") == 0
+    assert prop_value._won(0, 0.5, "under") == 1 and prop_value._won(1, 0.5, "under") == 0
+
+
+def test_resolve_rows_uses_stat_getter():
+    flags = [{"verdict": "FLAG", "date": "2026-07-01", "who": "X", "team": "T", "market": "SHOTS",
+              "line": 0.5, "side": "over", "best_odds": 2.0, "edge": 0.05},
+             {"verdict": "PASAR", "date": "2026-07-01", "who": "Y", "team": "T", "market": "GOALS",
+              "line": 0.5, "side": "over", "best_odds": 3.0, "edge": 0.0}]
+    getter = lambda who, team, mk, ln, d: 2 if who == "X" else None   # X hizo 2 tiros
+    rows = prop_value._resolve_rows(flags, set(), getter, "ts")
+    assert len(rows) == 1 and rows[0]["who"] == "X"                    # solo FLAG con stat resuelto
+    assert rows[0]["won"] == 1 and rows[0]["pnl_flat"] == 10.0         # 2 > 0.5 -> gano @ 2.0
+
+
+def test_resolve_rows_skips_done_and_pending():
+    flags = [{"verdict": "FLAG", "date": "2026-07-01", "who": "X", "team": "T", "market": "SHOTS",
+              "line": 0.5, "side": "over", "best_odds": 2.0, "edge": 0.05}]
+    done = {("2026-07-01", "X", "SHOTS", 0.5, "over")}
+    assert prop_value._resolve_rows(flags, done, lambda *a: 3, "ts") == []   # ya resuelto -> skip
+    assert prop_value._resolve_rows(flags, set(), lambda *a: None, "ts") == []  # sin stat -> pendiente
+
+
 def test_flag_requires_corroboration():
     # edge de mercado alto pero el hit-rate propio contradice (season 5%, over improbable) -> NO FLAG
     books = {"a": {"over": 2.0, "under": 2.0}, "b": {"over": 2.0, "under": 2.0},

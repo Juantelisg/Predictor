@@ -134,3 +134,24 @@ siguiente; saltar es la receta del EV+ viejo.
 - Recalibración por familia + shrink = **in-sample**; el forward-test (`pnl.py`) la valida con volumen.
 - El modelo crudo viene un toque alcista en favoritos vs el book → lo dirá `pnl.py` con muestra.
 - Polish: render del XI en el dashboard.html (la data ya llega al API); MLB/NBA a la capa de edge; persistir SQLite.
+
+## Dónde estamos parados (2026-07-01) — audit Fable ejecutado
+
+Auditoría completa (`docs/AUDIT_FABLE_2026-07-01.md`) + ejecución de sus tickets. **Veredicto del
+forward-test del edge (el juez): edge-v1 daba ROI −43% flat** — no era varianza, eran 3 causas raíz
+(de-vig proporcional inflando longshots, modelo ciego al régimen de empate, winner's curse). Ejecutado:
+
+- **T1-T3** (calib/edge/stake): clamp de pendiente (mató el bug de inversión ml|mid), n por partidos,
+  gate OOS del calibrador, 1X2 per-outcome + renormalización (mató el edge fantasma), power de-vig +
+  gates (empate>33%=NO-APTO, longshot>4.0=NO-APTO) + `p_bet` shrunk. Replay: −43% → +1% (solo longshot)
+  → +29% (favoritos). `edge_version="edge-v2"`.
+- **T4** CLV con cadencia real (tarea programada cada 2h → cierre ≠ apertura).
+- **T5** factor de nivel de cards/córners del torneo (empirical-Bayes walk-forward): cards gap +28%→+4.5%.
+- **T6** factor de nivel de GOLES del torneo: sesgo −0.39→−0.14, over ll 0.686→0.675, **1X2 intacto**.
+- **T7** máquina +EV multi-book de props (Linemate books): fuente de ROI #1. Verificada en MLB.
+- **T8** bug `*0` del acople de simulate corregido (acople medido ~0 con n=24, se mantiene independencia).
+- **T9** la calibración manda en el producto (picks/cartera/ticket usan prob calibrada por familia).
+- **T10** curva del empate (|elo_diff|): REFUTADA por el sweep (no mejora OOS), documentada.
+- **Pendiente**: resolver de props (falta fuente per-fixture de stats de jugador), acumular ≥30
+  candidatas edge-v2 para el veredicto de plata, MLB/NBA a la capa de edge.
+- **Estado**: 119 tests verdes, motor base (1X2/over holdout) intacto todo el camino.
