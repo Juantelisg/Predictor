@@ -29,13 +29,13 @@ CREATE TABLE IF NOT EXISTS evaluations (
     PRIMARY KEY (date, home, away, market, model_version)
 );
 CREATE TABLE IF NOT EXISTS bets (
-    date TEXT, home TEXT, away TEXT, side TEXT, p_model REAL, p_market REAL,
-    edge REAL, odds REAL, tier TEXT, stake REAL, ts TEXT,
+    date TEXT, home TEXT, away TEXT, side TEXT, p_model REAL, p_market REAL, p_bet REAL,
+    edge REAL, odds REAL, tier TEXT, stake REAL, edge_version TEXT, ts TEXT,
     PRIMARY KEY (date, home, away, side)
 );
 CREATE TABLE IF NOT EXISTS bet_evals (
     date TEXT, home TEXT, away TEXT, side TEXT, edge REAL, odds REAL, tier TEXT,
-    stake REAL, result TEXT, won INTEGER, pnl REAL, pnl_flat REAL, evaluated_at TEXT,
+    stake REAL, edge_version TEXT, result TEXT, won INTEGER, pnl REAL, pnl_flat REAL, evaluated_at TEXT,
     PRIMARY KEY (date, home, away, side)
 );
 -- snapshots de cuota para CLV (#3): la misma seleccion en distintos momentos (open/close)
@@ -54,11 +54,22 @@ _SPECS = {
                                      "prob", "model_version", "ts"], "soccer"),
     "evaluations": ("evaluations", ["date", "sport", "home", "away", "market", "model_version",
                                     "prob", "result", "outcome", "evaluated_at"], None),
-    "bets": ("bets", ["date", "home", "away", "side", "p_model", "p_market", "edge", "odds",
-                      "tier", "stake", "ts"], None),
+    "bets": ("bets", ["date", "home", "away", "side", "p_model", "p_market", "p_bet", "edge", "odds",
+                      "tier", "stake", "edge_version", "ts"], None),
     "bet_evals": ("bet_evals", ["date", "home", "away", "side", "edge", "odds", "tier", "stake",
-                                "result", "won", "pnl", "pnl_flat", "evaluated_at"], None),
+                                "edge_version", "result", "won", "pnl", "pnl_flat", "evaluated_at"], None),
 }
+
+
+def _migrate(con):
+    """Agrega columnas nuevas a tablas ya existentes (CREATE TABLE IF NOT EXISTS no migra columnas).
+    Idempotente: solo ALTER si la columna falta."""
+    for table, cols in (("bets", [("p_bet", "REAL"), ("edge_version", "TEXT")]),
+                        ("bet_evals", [("edge_version", "TEXT")])):
+        have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})").fetchall()}
+        for col, typ in cols:
+            if col not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
 
 
 def connect():
@@ -66,6 +77,7 @@ def connect():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    _migrate(con)
     return con
 
 

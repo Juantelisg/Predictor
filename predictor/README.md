@@ -34,7 +34,27 @@ $PY predictor/feedback.py calibrate                  # fitea el recalibrador (Pl
 
 # Presupuesto de la API escasa
 $PY predictor/budget.py
+
+# Closing Line Value (CLV) - snapshot de cuotas
+$PY predictor/clv.py snapshot   # guarda las cuotas 1X2 del momento (con timestamp)
+$PY predictor/clv.py report     # CLV por apuesta: solo cuentan las de >=2 snapshots a distinto ts
 ```
+
+## Closing Line Value (CLV)
+
+El CLV mide si el precio que tomamos le gana al **cierre** del mercado — el indicador de edge de
+**menor varianza** (converge antes que el ROI). Requiere **cadencia**: snapshotear las cuotas varias
+veces al día, así el último snapshot antes del kickoff es el cierre (con un solo snapshot, cierre ==
+apertura y el CLV es 0 por construcción). La cadencia la da una **tarea programada de Windows**
+(`predictor/snapshot.bat`, cada 2h):
+
+```
+schtasks /create /tn "bets-clv-snapshot" /tr "C:\bets\predictor\snapshot.bat" /sc hourly /mo 2 /st 10:00 /f
+schtasks /run    /tn "bets-clv-snapshot"    REM correr ya   |   /delete ... /f  REM quitarla
+```
+
+> El CLV **no es retroactivo** (ESPN free no da cuotas históricas): se acumula desde que la tarea
+> empieza a correr. Es **métrica de validación**, nunca feature del modelo.
 
 > uvicorn **no recarga solo**: al editar, matar el puerto y relanzar
 > (`Get-NetTCPConnection -LocalPort 8900 | Stop-Process` en PowerShell).
