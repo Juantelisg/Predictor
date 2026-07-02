@@ -134,12 +134,51 @@ def report():
         print(f"\n  SOSPECHOSO (flaggeadas, NO apostadas): ROI flat {roi:+.1f}% -> {verdict}")
 
 
+def _apply_gates(rows, odds_max):
+    """Gates de edge-v2 aplicables por-apuesta: cap de longshot (cuota <= odds_max) + excluir empates
+    (proxy del gate de regimen de empate). Devuelve el subconjunto que SOBREVIVE."""
+    return [e for e in rows if e["odds"] <= odds_max and e["side"] != "draw"]
+
+
+def gate_replay():
+    """Re-puntua las candidatas edge-v1 ya logueadas-FORWARD a traves de los gates de edge-v2 -> el
+    ROI flat que habrian tenido bajo la nueva logica. HONESTIDAD: los gates se disenaron sobre esta
+    muestra (in-sample para el diseno), pero la SELECCION de candidatas fue forward y los resultados
+    reales. El veredicto truly-forward lo dan las edge-v2 que el loop acumula desde 2026-07-01."""
+    import edge as edgemod
+    ev = _read(EVAL_DIR)
+    v1 = [e for e in ev if e.get("edge_version", "edge-v1") == "edge-v1"]
+    v2 = [e for e in ev if e.get("edge_version") == "edge-v2"]
+
+    def roi(rows):
+        if not rows:
+            return (0, 0, 0.0)
+        n = len(rows)
+        return (n, sum(r["won"] for r in rows), sum(r["pnl_flat"] for r in rows) / (n * NOTIONAL) * 100)
+
+    print("=" * 68)
+    print("  GATE-REPLAY: edge-v1 forward-logueadas re-puntuadas con los gates de edge-v2")
+    print("=" * 68)
+    print(f"  {'vista':<40}{'n':>4}{'aciertos':>10}{'ROI_flat':>10}")
+    for label, rows in [("edge-v1 (todas, forward)", v1),
+                        (f"+ gate longshot (cuota<={edgemod.ODDS_MAX:.1f})", [e for e in v1 if e["odds"] <= edgemod.ODDS_MAX]),
+                        ("+ excluir empates (regimen)", _apply_gates(v1, edgemod.ODDS_MAX))]:
+        n, h, r = roi(rows)
+        print(f"  {label:<40}{n:>4}{h:>7}/{n:<2}{r:>+9.1f}%")
+    n, h, r = roi(v2)
+    print(f"\n  edge-v2 truly-forward acumuladas (el veredicto real): n={n}"
+          + (f"  aciertos {h}/{n}  ROI_flat {r:+.1f}%" if n else "  (acumulando; loop desde 2026-07-01)"))
+    print("  Nota: gate-replay es in-sample para el DISENO de los gates; la seleccion fue forward.")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "report"
     if cmd == "log":
         log_bets(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "eval":
         eval_bets()
+    elif cmd == "gates":
+        gate_replay()
     else:
         report()
 
