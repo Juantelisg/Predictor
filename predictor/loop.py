@@ -17,7 +17,7 @@ import os, sys, datetime, traceback
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import feedback, pnl, db, clv, bankroll
+import feedback, pnl, db, clv, bankroll, prop_value
 
 
 def _step(name, fn):
@@ -46,6 +46,7 @@ def run(date=None):
         ("Loop B · log candidatas de edge", lambda: pnl.log_bets(date)),
         ("Loop B · eval de apuestas", pnl.eval_bets),
         ("Loop B · forward-test del edge (ROI)", pnl.report),
+        ("Loop C · props +EV multi-book · log flags (Linemate)", lambda: prop_value.log_props(date)),
         ("Persistencia · sync JSONL -> SQLite", lambda: _print_sync(db.sync())),
         ("Ledger · bankroll + drawdown + stop-loss", bankroll.report),
         ("CLV · report (precio tomado vs cierre)", clv.report),

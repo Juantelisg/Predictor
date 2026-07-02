@@ -70,8 +70,38 @@ def _split_cell(records, line, split):
     return (rec.get(split) or {}).get("all") or {}
 
 
+def _book_price(side_obj, line):
+    """Cuota decimal del lado a esa linea exacta (current si coincide, si no en alternates). None."""
+    if not side_obj or line is None:
+        return None
+    cur = side_obj.get("current") or {}
+    if cur and abs((cur.get("value") if cur.get("value") is not None else -999) - line) < 1e-6:
+        return (cur.get("odds") or {}).get("decimal")
+    for v in (side_obj.get("alternates") or {}).values():
+        if abs((v.get("value") if v.get("value") is not None else -999) - line) < 1e-6:
+            return (v.get("odds") or {}).get("decimal")
+    return None
+
+
+def _books(market, line):
+    """{book: {'over': dec, 'under': dec}} a la linea dada (solo lados presentes). Es la materia
+    prima del +EV multi-book: cada casa cotiza distinto y de la DISCREPANCIA sale el valor."""
+    out = {}
+    for bk, sides in (market.get("books") or {}).items():
+        o = _book_price((sides or {}).get("over"), line)
+        u = _book_price((sides or {}).get("under"), line)
+        entry = {}
+        if o:
+            entry["over"] = o
+        if u:
+            entry["under"] = u
+        if entry:
+            out[bk] = entry
+    return out
+
+
 def flatten(t):
-    """Normaliza un trend al dato util: quien, que mercado/linea/lado y los hit-rates."""
+    """Normaliza un trend al dato util: quien, que mercado/linea/lado, hit-rates y CUOTAS multi-book."""
     who = t.get("player", {}).get("fullName") if t.get("type") == "player" else t.get("team", {}).get("name")
     m = t.get("market", {})
     records = m.get("pregameHitRecords") or {}
@@ -96,6 +126,7 @@ def flatten(t):
         "games_l10": l10_cell.get("games"),      # juegos reales en L10
         "games_season": sea_cell.get("games"),   # juegos reales en temporada
         "avg_l5": l5_cell.get("average"),        # promedio del stat en L5 (ej: 1.4 tiros/partido)
+        "books": _books(m, line),                # cuotas over/under por casa a esta linea (insumo +EV)
         "signal": sig.get("annotation") if sig else "",
         "signal_desc": sig.get("description") if sig else "",
     }
