@@ -1,4 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { useSport } from '../../hooks/useSport'
+import { useDate } from '../../hooks/useDate'
+import { getWcAvailability } from '../../api/soccer'
 import Pill from '../common/Pill'
 
 function ProbBar({ prob, cal }) {
@@ -254,6 +257,67 @@ function MatchReading({ match }) {
   )
 }
 
+// Disponibilidad de un equipo: XI (confirmado si está, si no el habitual) + ausentes/bajas.
+function XIList({ block }) {
+  if (!block) return <p className="text-xs text-subtle">sin datos ESPN</p>
+  const confirmed = block.xi_status === 'confirmado'
+  const xi = confirmed ? block.xi : block.usual_starters
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-sm font-medium text-body truncate">{block.team}</span>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${confirmed
+          ? 'bg-[rgba(94,234,212,0.12)] text-accent' : 'bg-white/[0.05] text-subtle'}`}>
+          {confirmed ? 'XI confirmado' : `XI habitual · ${block.recent_matches}p`}
+        </span>
+      </div>
+      <p className="text-xs text-muted leading-relaxed">
+        {(xi ?? []).map(p => p.name).join(' · ') || '—'}
+      </p>
+      {(block.ausentes ?? []).length > 0 && (
+        <p className="text-xs text-hot mt-1.5">Fuera del XI: {block.ausentes.map(a => a.name).join(', ')}</p>
+      )}
+      {(block.bajas_ia ?? []).length > 0 && (
+        <p className="text-xs text-hot mt-1.5">Bajas (IA): {block.bajas_ia.map(b =>
+          `${b.jugador}${b.impacto ? ` (${b.impacto})` : ''}`).join(', ')}</p>
+      )}
+    </div>
+  )
+}
+
+// Sección de disponibilidad: se pide LAZY al abrir el partido (no bloquea el listado).
+// Recolector ESPN + bajas de la IA (lectura). El ajuste shadow se muestra como info, no toca picks.
+function AvailabilitySection({ match }) {
+  const date = useDate()
+  const { data, isLoading } = useQuery({
+    queryKey: ['wc-availability', match.home, match.away, date],
+    queryFn: () => getWcAvailability(match.home, match.away, date),
+    staleTime: 5 * 60_000,
+  })
+  if (isLoading) return (
+    <section><SectionTitle>Disponibilidad</SectionTitle>
+      <p className="text-xs text-subtle">cargando disponibilidad…</p></section>
+  )
+  if (!data || (!data.home && !data.away)) return null
+  const sh = data.shadow
+  return (
+    <section>
+      <SectionTitle>Disponibilidad · ESPN + IA</SectionTitle>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <XIList block={data.home} />
+        <XIList block={data.away} />
+      </div>
+      {sh && sh.delta !== 0 && (
+        <p className="text-[11px] text-subtle mt-3">
+          Ajuste por bajas (experimental, no afecta los picks): local{' '}
+          {Math.round(sh.cruda[0] * 100)}% → {Math.round(sh.ajustada[0] * 100)}%.
+        </p>
+      )}
+      {data._meta?.note && <p className="text-[11px] text-subtle mt-1">{data._meta.note}</p>}
+    </section>
+  )
+}
+
 function SoccerTeamContent({ match, mode }) {
   const a = match.analysis
   if (!a) return <p className="text-sm text-muted py-4">Sin análisis disponible.</p>
@@ -277,6 +341,10 @@ function SoccerTeamContent({ match, mode }) {
   return (
     <div>
       <MatchReading match={match} />
+
+      <div className="mt-6">
+        <AvailabilitySection match={match} />
+      </div>
 
       <section className="mt-6">
         <GroupedTable groups={groups} lastGames={lastGames} pickMap={pickMap} />

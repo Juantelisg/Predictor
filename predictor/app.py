@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
-import track, history
+import track, history, sensor
 
 app = FastAPI(title="Predictor")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -239,6 +239,35 @@ def wc_players(home: str, away: str):
             _players_building.add(key)
             threading.Thread(target=_build_players, args=(home, away, key), daemon=True).start()
     return {"home": home, "away": away, "players": [], "status": "building"}
+
+
+def _compute_availability(home, away, date):
+    """Disponibilidad del partido (capa 1 del sensor): recolector ESPN (titulares habituales +
+    XI + ausentes) + merge de la lectura IA (bajas/impacto/motivacion) + ajuste SHADOW
+    (cruda vs ajustada, NO aplicado a la decision). Reusa las cards ya cacheadas del tab."""
+    av = sensor.availability(home, away, date)
+    wc = cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
+    card = next((c for c in wc.get("cards", []) if c.get("home") == home and c.get("away") == away), None)
+    if card:
+        sensor.merge_lectura(av, card.get("lectura"))
+        an = card.get("analysis")
+        if an and an.get("resultado"):
+            probs = [r["cal"] for r in an["resultado"]]
+            adj, delta = sensor.adjust(probs, av)
+            av["shadow"] = {"cruda": [round(p, 4) for p in probs], "ajustada": adj, "delta": delta}
+    return av
+
+
+@app.get("/api/wc/availability")
+def wc_availability(home: str, away: str, date: str = None):
+    """Disponibilidad estructurada del partido (lazy, NO bloquea el slate: el front la pide al
+    abrir el partido). Titulares habituales + XI + bajas IA + ajuste shadow. Contexto, no decide."""
+    date = date or datetime.date.today().isoformat()
+    try:
+        return cache.cached(f"avail:{home}|{away}|{date}", TTL,
+                            lambda: _compute_availability(home, away, date))
+    except Exception as e:
+        return {"home": None, "away": None, "error": str(e)}
 
 
 @app.get("/api/mlb/today")
