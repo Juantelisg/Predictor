@@ -68,13 +68,26 @@ def test_won_over_under():
 
 def test_resolve_rows_uses_stat_getter():
     flags = [{"verdict": "FLAG", "date": "2026-07-01", "who": "X", "team": "T", "market": "SHOTS",
-              "line": 0.5, "side": "over", "best_odds": 2.0, "edge": 0.05},
+              "line": 0.5, "side": "over", "best_odds": 2.0, "edge": 0.05, "sport": "mlb"},
              {"verdict": "PASAR", "date": "2026-07-01", "who": "Y", "team": "T", "market": "GOALS",
-              "line": 0.5, "side": "over", "best_odds": 3.0, "edge": 0.0}]
-    getter = lambda who, team, mk, ln, d: 2 if who == "X" else None   # X hizo 2 tiros
-    rows = prop_value._resolve_rows(flags, set(), getter, "ts")
+              "line": 0.5, "side": "over", "best_odds": 3.0, "edge": 0.0, "sport": "mlb"}]
+    resolve_one = lambda f: 2 if f["who"] == "X" else None            # X hizo 2 (via inyeccion)
+    rows = prop_value._resolve_rows(flags, set(), resolve_one, "ts")
     assert len(rows) == 1 and rows[0]["who"] == "X"                    # solo FLAG con stat resuelto
     assert rows[0]["won"] == 1 and rows[0]["pnl_flat"] == 10.0         # 2 > 0.5 -> gano @ 2.0
+
+
+def test_resolve_one_routes_soccer_to_none():
+    # sin fuente per-fixture para WC2026 -> soccer siempre pendiente (no rompe, no inventa)
+    assert prop_value._resolve_one({"sport": "soccer", "who": "Kane", "market": "SHOTS",
+                                    "line": 1.5, "side": "over", "date": "2026-06-27"}) is None
+
+
+def test_mlb_market_map_singles():
+    # HITTER_SINGLES = hits - dobles - triples - HR
+    b = {"hits": 3, "doubles": 1, "triples": 0, "homeRuns": 1}
+    assert prop_value._MLB_STAT["HITTER_SINGLES"](b) == 1
+    assert prop_value._MLB_STAT["HITTER_HITS_PLUS_RUNS_PLUS_RUNS_BATTED_IN"]({"hits": 2, "runs": 1, "rbi": 3}) == 6
 
 
 def test_resolve_rows_skips_done_and_pending():
