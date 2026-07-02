@@ -1,17 +1,6 @@
 import { useSport } from '../../hooks/useSport'
 import Pill from '../common/Pill'
 
-const pct = (x) => Math.round((x ?? 0) * 100) + '%'
-
-const TIER_CONFIG = {
-  FUERTE:     { bg: 'rgba(251,113,133,0.12)', color: '#fb7185', border: 'rgba(251,113,133,0.2)', label: 'FUERTE' },
-  MODERADO:   { bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: 'rgba(251,191,36,0.2)',  label: 'MOD' },
-  BAJO:       { bg: 'rgba(96,165,250,0.12)',  color: '#60a5fa', border: 'rgba(96,165,250,0.2)',  label: 'BAJO' },
-  PASAR:      { bg: 'rgba(255,255,255,0.04)', color: '#4d5e73', border: 'rgba(255,255,255,0.08)', label: 'pass' },
-  'NO-APTO':  { bg: 'rgba(255,255,255,0.04)', color: '#4d5e73', border: 'rgba(255,255,255,0.08)', label: '—' },
-  SOSPECHOSO: { bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: 'rgba(251,191,36,0.2)',  label: 'SUSP' },
-}
-
 function ProbBar({ prob, cal }) {
   const val = cal ?? prob ?? 0
   const p = Math.round(val * 100)
@@ -30,31 +19,6 @@ function ProbBar({ prob, cal }) {
         />
       </div>
       <span className={`text-sm font-bold tabular w-9 text-right ${textCls}`}>{p}%</span>
-    </div>
-  )
-}
-
-function EdgeRow({ r }) {
-  const cfg = TIER_CONFIG[r.tier] ?? TIER_CONFIG.PASAR
-  const hasEdge = r.tier !== 'PASAR' && r.tier !== 'NO-APTO'
-  const eg = hasEdge
-    ? (r.edge >= 0 ? '+' : '') + (Math.round(r.edge * 1000) / 10) + '%'
-    : '—'
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.04]">
-      <span className="text-sm text-body flex-1 min-w-0 truncate">{r.label}</span>
-      <span className="text-xs text-subtle tabular hidden sm:block shrink-0">
-        m {pct(r.p_model)} · mkt {pct(r.p_market)}
-      </span>
-      <span className={`text-sm font-bold tabular w-14 text-right shrink-0 ${hasEdge ? 'text-accent' : 'text-subtle'}`}>
-        {eg}
-      </span>
-      <span
-        className="text-[11px] px-2 py-0.5 rounded-md font-semibold shrink-0"
-        style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-      >
-        {cfg.label}
-      </span>
     </div>
   )
 }
@@ -250,9 +214,48 @@ function GroupedTable({ groups, lastGames, pickMap }) {
   )
 }
 
+// Lectura del partido: contexto y motivo de los picks. Usa la lectura en vivo (Claude:
+// bajas/XI/forma) si está cargada para la fecha; si no, arma un resumen determinista desde
+// el modelo (favorito + confianza + los picks a jugar) para que la sección nunca quede vacía.
+function MatchReading({ match }) {
+  const a = match.analysis
+  const lec = match.lectura
+  let live, summary, bullets
+
+  if (lec?.summary) {
+    live = true
+    summary = lec.summary
+    bullets = lec.context ?? []
+  } else if (a?.resultado?.length) {
+    live = false
+    const res = a.resultado
+    const fav = res.reduce((m, r) => ((r.cal ?? r.prob) > (m.cal ?? m.prob) ? r : m), res[0])
+    const favPct = Math.round((fav.cal ?? fav.prob) * 100)
+    const favTxt = fav.label === 'Empate' ? 'el empate' : fav.label.replace(/^Gana /, '')
+    const tono = fav.label === 'Empate' ? 'partido parejo' : favPct >= 60 ? 'favorito claro' : 'leve favorito'
+    const picks = a.picks ?? []
+    summary = `${favTxt} — ${tono} para el modelo (${favPct}%).`
+    bullets = picks.length
+      ? ['A jugar: ' + picks.map(p => `${p.pick} (${Math.round(p.prob * 100)}%)`).join(' · '),
+         'Sin contexto en vivo cargado para esta fecha (bajas/XI): lectura basada solo en los números del modelo.']
+      : ['El modelo no encuentra picks con confianza suficiente: partido para pasar o solo mirar.']
+  } else {
+    return null
+  }
+
+  return (
+    <section>
+      <SectionTitle>{live ? 'Lectura del partido · contexto en vivo' : 'Lectura del partido'}</SectionTitle>
+      <p className="text-sm text-body leading-relaxed mb-2">{summary}</p>
+      {bullets.map((b, i) => (
+        <p key={i} className="text-sm text-muted leading-relaxed mb-1.5">{b}</p>
+      ))}
+    </section>
+  )
+}
+
 function SoccerTeamContent({ match, mode }) {
   const a = match.analysis
-  const edge = match.edge
   if (!a) return <p className="text-sm text-muted py-4">Sin análisis disponible.</p>
 
   const pickMap = Object.fromEntries((a.picks ?? []).map(p => [p.pick, p.level]))
@@ -273,13 +276,7 @@ function SoccerTeamContent({ match, mode }) {
 
   return (
     <div>
-      {edge?.rows?.length > 0 && (
-        <section>
-          <SectionTitle>Edge vs mercado · {edge.provider}</SectionTitle>
-          {edge.rows.map((r, i) => <EdgeRow key={i} r={r} />)}
-          <p className="text-[11px] text-subtle mt-2">SUSP = edge {'>'} 20%: probable error del modelo.</p>
-        </section>
-      )}
+      <MatchReading match={match} />
 
       <section className="mt-6">
         <GroupedTable groups={groups} lastGames={lastGames} pickMap={pickMap} />
