@@ -187,26 +187,38 @@ def _linemate_trends(lm_codes, league):
         return []
 
 
-def _picks(home, away, resultado, doble, goles, corners):
-    """Picks confiables (deterministas): mercados de equipo con prob >= 62%, ordenados.
-    Las tarjetas se excluyen a proposito (el modelo las SOBREESTIMA)."""
-    cand = []
-    res = max(resultado, key=lambda x: x["cal"])
-    cand.append({"market": "Resultado", "pick": res["label"], "prob": res["cal"]})
-    dk = max(doble, key=doble.get)
+# familias APTAS para 'picks confiables' (calibradas o subconfiadas = seguras). cards queda afuera:
+# es la mas sesgada al alza aun con el factor de torneo -> un pick "confiable" de cards mentiria.
+PICK_FAMILIES = {"1x2", "dc", "over", "btts", "corners"}
+
+
+def _picks(home, away, resultado, doble, goles, corners, cal_fn):
+    """Picks confiables (deterministas): mercados de equipo con prob CALIBRADA >= 62%, ordenados.
+    Toda prob pasa por el recalibrador por familia (cal_fn); el gate PICK_FAMILIES reemplaza la
+    exclusion manual de cards. Un pick que crudo daba >=62% pero calibrado cae por debajo, se filtra."""
     names = {"1X": f"{home} o empate", "X2": f"{away} o empate", "12": "Sin empate"}
-    cand.append({"market": "Doble oport.", "pick": names[dk], "prob": doble[dk]})
-    cand.append({"market": "Goles", "pick": "Over 1.5", "prob": goles["over15"]})
-    o25 = goles["over25"]
-    cand.append({"market": "Goles", "pick": "Over 2.5" if o25 >= 0.5 else "Under 2.5", "prob": max(o25, 1 - o25)})
-    bt = goles["btts"]
-    cand.append({"market": "BTTS", "pick": "Ambos marcan" if bt >= 0.5 else "No ambos", "prob": max(bt, 1 - bt)})
+    o25 = cal_fn(goles["over25"], "over")
+    bt = cal_fn(goles["btts"], "btts")
+    cand = [
+        {"market": "Resultado", "family": "1x2",
+         "pick": max(resultado, key=lambda x: x["cal"])["label"],
+         "prob": max(resultado, key=lambda x: x["cal"])["cal"]},
+        {"market": "Doble oport.", "family": "dc",
+         "pick": names[max(doble, key=doble.get)], "prob": doble[max(doble, key=doble.get)]},
+        {"market": "Goles", "family": "over", "pick": "Over 1.5", "prob": cal_fn(goles["over15"], "over")},
+        {"market": "Goles", "family": "over",
+         "pick": "Over 2.5" if o25 >= 0.5 else "Under 2.5", "prob": max(o25, 1 - o25)},
+        {"market": "BTTS", "family": "btts",
+         "pick": "Ambos marcan" if bt >= 0.5 else "No ambos", "prob": max(bt, 1 - bt)},
+    ]
     if corners:
-        cand.append({"market": "Corners", "pick": "Over 8.5", "prob": corners["o85"]})
-    for c in cand:
+        cand.append({"market": "Corners", "family": "corners", "pick": "Over 8.5",
+                     "prob": cal_fn(corners["o85"], "corners")})
+    picks = [c for c in cand if c["family"] in PICK_FAMILIES and c["prob"] >= 0.62]
+    for c in picks:
         c["prob"] = round(c["prob"], 4)
         c["level"] = _lvl(c["prob"])
-    picks = sorted([c for c in cand if c["prob"] >= 0.62], key=lambda c: c["prob"], reverse=True)
+    picks.sort(key=lambda c: c["prob"], reverse=True)
     return picks[:5]
 
 
@@ -246,9 +258,21 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
                  {"label": f"Gana {V}", "prob": round(b[-1], 4), "cal": round(ca, 4)}]
     # doble oportunidad DERIVADA del 1X2 calibrado (misma info; no se fitea un calibrador dc aparte)
     doble = {"1X": round(ch + cd, 4), "X2": round(cd + ca, 4), "12": round(ch + ca, 4)}
+    # cal_fn: recalibrador por familia. corners/cards usan su version v2; el resto soccer-v3.
+    # (si una familia no tiene calibrador -> identidad; si el gate OOS la desactivo -> raw, seguro.)
+    def cal_fn(p, fam):
+        ver = {"corners": "corners-sb-v2", "cards": "cards-sb-v2"}.get(fam, soccer.VERSION)
+        return calib.apply(p, ver, fam, cp, context=calib.context_of(p))
+
     goles = {"over15": round(r["over15"], 4), "over25": round(r["over"], 4),
-             "over35": round(r["over35"], 4), "btts": round(r["btts"], 4)}
-    valla = {"home": round(r["cs_home"], 4), "away": round(r["cs_away"], 4)}
+             "over35": round(r["over35"], 4), "btts": round(r["btts"], 4),
+             # cruda Y calibrada por mercado (T9): el producto/ticket usan la calibrada
+             "over15_cal": round(cal_fn(r["over15"], "over"), 4),
+             "over25_cal": round(cal_fn(r["over"], "over"), 4),
+             "over35_cal": round(cal_fn(r["over35"], "over"), 4),
+             "btts_cal": round(cal_fn(r["btts"], "btts"), 4)}
+    valla = {"home": round(r["cs_home"], 4), "away": round(r["cs_away"], 4),
+             "home_cal": round(cal_fn(r["cs_home"], "cs"), 4), "away_cal": round(cal_fn(r["cs_away"], "cs"), 4)}
 
     corners = cards = None
     try:
@@ -274,7 +298,7 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
             "linemate": _linemate_trends(lm_codes, league),
             "panorama": _player_panorama(lm_codes, league),
             "availability": _availability(L, V, date, league),
-            "picks": _picks(L, V, resultado, doble, goles, corners)}
+            "picks": _picks(L, V, resultado, doble, goles, corners, cal_fn)}
 
 
 def run(local, visita, neutral=True, lm_codes=None, league="wc"):

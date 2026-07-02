@@ -59,16 +59,17 @@ def model_prob(an, market, pick):
     if m == "dc":
         return {"1x": ch + cd, "x2": cd + ca, "12": ch + ca}.get(p), "dc"
     if m == "over":
-        g = an["goles"]
-        return {"over1.5": g["over15"], "under1.5": 1 - g["over15"],
-                "over2.5": g["over25"], "under2.5": 1 - g["over25"],
-                "over3.5": g["over35"], "under3.5": 1 - g["over35"]}.get(p), "over"
+        g = an["goles"]                         # usa la prob CALIBRADA por familia (T9), con fallback a cruda
+        o15, o25, o35 = g.get("over15_cal", g["over15"]), g.get("over25_cal", g["over25"]), g.get("over35_cal", g["over35"])
+        return {"over1.5": o15, "under1.5": 1 - o15,
+                "over2.5": o25, "under2.5": 1 - o25,
+                "over3.5": o35, "under3.5": 1 - o35}.get(p), "over"
     if m == "btts":
-        b = an["goles"]["btts"]
+        b = an["goles"].get("btts_cal", an["goles"]["btts"])
         return {"yes": b, "no": 1 - b}.get(p), "btts"
     if m == "cs":
         v = an["valla"]
-        return {"home": v["home"], "away": v["away"]}.get(p), "cs"
+        return {"home": v.get("home_cal", v["home"]), "away": v.get("away_cal", v["away"])}.get(p), "cs"
     if m == "corners":
         c = an.get("corners")
         return (c["o85"] if c else None), "corners"
