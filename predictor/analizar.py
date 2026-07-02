@@ -23,13 +23,26 @@ def _lvl(p):
     return "ALTA" if p >= 0.65 else "MEDIA" if p >= 0.55 else "BAJA"
 
 
+_CTX_MEMO = {}   # {"fp": fingerprint, "ctx": (df, df_elo, rating, models)} - una sola entrada
+
+
 def load_ctx():
     """(df, df_elo, rating, models) - lo caro de cargar + fitear. Reutilizable entre partidos:
-    los 4 modelos se fitean UNA sola vez aca (no por partido)."""
+    los 4 modelos se fitean UNA sola vez aca (no por partido).
+
+    Memoizado en proceso por fingerprint del dataset (filas + fecha maxima): mientras el CSV
+    de resultados no cambie, se reusa el fit y se evita re-fitear (~2.5-4s) en cada computo
+    frio (cada expiracion de TTL, cada endpoint). soccer.load() ya lee del cache de 12h, asi
+    que sacar el fingerprint cuesta ~100ms."""
     df = soccer.load()
+    fp = (len(df), str(df["date"].max()))
+    if _CTX_MEMO.get("fp") == fp:
+        return _CTX_MEMO["ctx"]
     df_elo, rating = elo.compute(df)
     models = soccer.fit_today(df_elo)
-    return df, df_elo, rating, models
+    ctx = (df, df_elo, rating, models)
+    _CTX_MEMO["fp"], _CTX_MEMO["ctx"] = fp, ctx
+    return ctx
 
 
 # mercado de Linemate -> etiqueta en español para el panorama de jugadores
