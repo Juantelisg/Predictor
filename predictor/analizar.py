@@ -245,15 +245,15 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
 
     corners = cards = None
     try:
-        import statsbomb_data as sb
-        c = sb.predict_corners(L, V)
+        import regime
+        c = regime.predict("corners", L, V)          # factor de nivel del torneo (v2)
         corners = {"exp": c["total_exp"], "o85": round(c["over85"], 4),
                    "o95": round(c["over95"], 4), "o105": round(c["over105"], 4)}
     except Exception:
         pass
     try:
-        import statsbomb_data as sb
-        k = sb.predict_cards(L, V)
+        import regime
+        k = regime.predict("cards", L, V)            # v2: corrige la sobreestimacion de amarillas
         cards = {"exp": k["total_exp"], "o25": round(k["over25"], 4),
                  "o35": round(k["over35"], 4), "o45": round(k["over45"], 4)}
     except Exception:

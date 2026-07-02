@@ -158,8 +158,10 @@ def get(team_name):
 # ---------------------------------------------------------------------------
 # Prediccion de corners para SELECCIONES (usando StatsBomb)
 # ---------------------------------------------------------------------------
-def predict_corners(home, away):
-    """Predice corners para un partido entre selecciones con datos StatsBomb."""
+def predict_corners(home, away, factor=1.0):
+    """Predice corners para un partido entre selecciones con datos StatsBomb. factor = multiplicador
+    de NIVEL del torneo (empirical-Bayes walk-forward, ver regime.py): corrige que el WC en curso
+    genere mas/menos corners que la base historica sin tocar la diferenciacion entre equipos."""
     data = load()
     H = resolve(home, data)
     A = resolve(away, data)
@@ -180,8 +182,8 @@ def predict_corners(home, away):
     avg_ca = sum(all_ca) / len(all_ca)
     league_avg = (avg_cf + avg_ca) / 2
 
-    lh = max(sh["avg_corners_for"] * sa["avg_corners_against"] / league_avg, 0.3)
-    la = max(sa["avg_corners_for"] * sh["avg_corners_against"] / league_avg, 0.3)
+    lh = max(sh["avg_corners_for"] * sa["avg_corners_against"] / league_avg, 0.3) * factor
+    la = max(sa["avg_corners_for"] * sh["avg_corners_against"] / league_avg, 0.3) * factor
 
     # Matriz Poisson
     k = np.arange(MAXC + 1)
@@ -217,8 +219,10 @@ def predict_corners(home, away):
 # ---------------------------------------------------------------------------
 # Prediccion de tarjetas amarillas para SELECCIONES (usando StatsBomb)
 # ---------------------------------------------------------------------------
-def predict_cards(home, away):
-    """Predice tarjetas amarillas TOTALES para un partido entre selecciones."""
+def predict_cards(home, away, factor=1.0):
+    """Predice tarjetas amarillas TOTALES para un partido entre selecciones. factor = multiplicador
+    de NIVEL del torneo (empirical-Bayes walk-forward, ver regime.py): la base StatsBomb 2018-24
+    sobreestima las amarillas del WC2026 (+28% gap); el factor lo corrige sin overfittear."""
     data = load()
     H = resolve(home, data)
     A = resolve(away, data)
@@ -233,8 +237,8 @@ def predict_cards(home, away):
     league_avg = (sum(all_cf) / len(all_cf) + sum(all_ca) / len(all_ca)) / 2
 
     # ataque (indisciplina propia) * defensa (provoca al rival) / media del set
-    lh = max(sh["avg_cards_for"] * sa["avg_cards_against"] / league_avg, 0.2)
-    la = max(sa["avg_cards_for"] * sh["avg_cards_against"] / league_avg, 0.2)
+    lh = max(sh["avg_cards_for"] * sa["avg_cards_against"] / league_avg, 0.2) * factor
+    la = max(sa["avg_cards_for"] * sh["avg_cards_against"] / league_avg, 0.2) * factor
 
     MAXY = 12
     k = np.arange(MAXY + 1)

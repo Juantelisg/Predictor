@@ -85,22 +85,23 @@ def _row(date, home, away, market, prob, version, ts, neutral=True):
 
 
 def _statsbomb_markets(local, visita, date, ts):
-    """Cornes + tarjetas de selecciones (StatsBomb). [] si no hay datos (no fabrica)."""
+    """Cornes + tarjetas de selecciones (StatsBomb) CON factor de nivel del torneo (regime, v2).
+    El factor sale de partidos WC ANTERIORES a `date` -> walk-forward, sin fuga. [] si no hay datos."""
     rows = []
     try:
-        import statsbomb_data as sb
+        import regime
     except Exception:
         return rows
     try:
-        c = sb.predict_corners(local, visita)
+        c = regime.predict("corners", local, visita, before_date=date)
         for line, p in [("8.5", c["over85"]), ("9.5", c["over95"]), ("10.5", c["over105"])]:
-            rows.append(_row(date, local, visita, f"corners:over:{line}", p, "corners-sb-v1", ts))
+            rows.append(_row(date, local, visita, f"corners:over:{line}", p, "corners-sb-v2", ts))
     except Exception:
         pass
     try:
-        k = sb.predict_cards(local, visita)
+        k = regime.predict("cards", local, visita, before_date=date)
         for line, p in [("2.5", k["over25"]), ("3.5", k["over35"]), ("4.5", k["over45"])]:
-            rows.append(_row(date, local, visita, f"cards:over:{line}", p, "cards-sb-v1", ts))
+            rows.append(_row(date, local, visita, f"cards:over:{line}", p, "cards-sb-v2", ts))
     except Exception:
         pass
     return rows
