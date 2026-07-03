@@ -1,3 +1,21 @@
+> # 🔄 ESTADO REAL (2026-07-02) — LEER ANTES QUE NADA
+>
+> - **Las 7 skills (`sports-skills`, `.agents/skills/`, `skills-lock.json`) están MUERTAS.** El
+>   producto vivo (`predictor/`) fetchea TODO con `requests` directo: ESPN, MLB StatsAPI, Linemate,
+>   API-Football, CSV internacional. La sección "Toolbox" de más abajo describe un toolbox que ya
+>   NO se usa (queda como histórico). El único cuello de cupo real = **API-Football (100/día)**;
+>   ESPN y statsapi son ilimitadas (lo dice `predictor/budget.py`).
+> - **Sensor de disponibilidad** (`predictor/sensor.py`): recolector determinista ESPN (titulares
+>   habituales + XI → ausentes) + `merge_lectura` (la IA de `lecturas.py` estructura bajas/impacto/
+>   motivación) + `adjust()` en **SHADOW** (ajuste ±4pp por severidad de ausencias, NO aplicado a la
+>   decisión hasta forward-test). Endpoint lazy `/api/wc/availability`. Ver `[[project-sensor-ia-disponibilidad]]`.
+> - **ESPN sustituye a API-Football en props** (SOT/goles/asist idénticos, verificado; tiros totales
+>   difieren): ver `predictor/espn_players.py`. Libera cupo.
+> - **Deploy:** Render sirve `frontend/dist` COMMITEADO (no buildea). Tras `npm run build` hay que
+>   `git add -f` los assets nuevos o prod queda con index.html apuntando a bundles borrados.
+>
+> ---
+>
 > # ⚠️ DIRECCIÓN ACTUAL DEL PROYECTO (2026-06-21 en adelante) — LEER PRIMERO
 >
 > El proyecto es un **supra-modelo de decisión de apuestas** = 3 cerebros + 1 loop:

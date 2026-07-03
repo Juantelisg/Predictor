@@ -1,9 +1,10 @@
 """app.py - backend del dashboard del predictor (FastAPI). CERO cuotas.
 
-Sirve dashboard.html y expone los analisis que ya generamos por CLI como JSON:
-  /api/mlb/today      -> lectura MLB del dia (favorito + abridores)
-  /api/soccer/today   -> partidos de selecciones de hoy (1X2 + totales + BTTS)
-  /api/budget         -> presupuesto de la API escasa
+Sirve el build de React (frontend/dist) y expone los analisis como JSON:
+  /api/wc/today        -> partidos del Mundial (cuadro + picks + lectura)
+  /api/wc/availability -> disponibilidad (sensor: XI + bajas + ajuste shadow)
+  /api/mlb/today       -> lectura MLB del dia (favorito + abridores)
+  /api/budget          -> presupuesto de la API escasa
 
 Levantar (local):
   uvicorn predictor.app:app --port 8900
@@ -22,7 +23,7 @@ from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import mlb, soccer, slate, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
+import mlb, soccer, budget, cache, analizar, linemate, odds, edge, uncertainty, cartera, ticket
 import track, history, sensor
 
 app = FastAPI(title="Predictor")
@@ -100,23 +101,6 @@ def _logro(market, pick, p):
     return {"market": market, "pick": pick, "prob": round(p * 100), "level": _lvl(p)}
 
 
-def _soccer_logros(g):
-    """Varios mercados (logros) de un partido, derivados del MISMO modelo."""
-    b, L, V = g["blend"], g["local"], g["visita"]
-    fav = max(b, key=b.get)
-    out = [_logro("Resultado", ("Gana " + (L if fav == 1 else V)) if fav != 0 else "Empate", b[fav])]
-    dc = {"1X": (b[1] + b[0], f"{L} o empate"), "X2": (b[0] + b[-1], f"{V} o empate"),
-          "12": (b[1] + b[-1], "Sin empate")}
-    k = max(dc, key=lambda x: dc[x][0])
-    out.append(_logro("Doble oport.", dc[k][1], dc[k][0]))
-    out.append(_logro("Goles", "+1.5", g["over15"]))
-    out.append(_logro("Goles", "Over 2.5", g["over"]) if g["over"] >= 0.5
-               else _logro("Goles", "Under 2.5", 1 - g["over"]))
-    out.append(_logro("BTTS", "Sí", g["btts"]) if g["btts"] >= 0.5
-               else _logro("BTTS", "No", 1 - g["btts"]))
-    return out
-
-
 def _compute_mlb(date):
     preds, _ = mlb.predict_today(date)
     cards = [{"cat": MLB_CAT, "tag": "MLB", "rank": i + 1, "home": g["home"], "away": g["away"],
@@ -124,18 +108,6 @@ def _compute_mlb(date):
               "logros": [_logro("Ganador · ML", g["pick"], g["prob"])], "analisis": g["insights"]}
              for i, g in enumerate(preds)]
     return {"date": date, "note": "modelo validado · 57% acc (2025) · solo Moneyline por ahora · score = probabilidad",
-            "cards": cards}
-
-
-def _compute_soccer(date):
-    fx = slate.soccer_today(date)
-    preds = soccer.predict_fixtures([(g["home"], g["away"], True) for g in fx])   # WC = neutral
-    preds.sort(key=lambda x: x["prob_top"], reverse=True)
-    cards = [{"cat": SOC_CAT, "tag": "WC", "rank": i + 1, "home": g["local"], "away": g["visita"],
-              "hprob": round(g["prob_top"] * 100), "hlevel": g["level"],
-              "logros": _soccer_logros(g), "analisis": g["insights"]}
-             for i, g in enumerate(preds)]
-    return {"date": date, "note": "modelo validado · 60% acc 1X2 · score = probabilidad, no apuesta",
             "cards": cards}
 
 
@@ -209,14 +181,31 @@ def _players_key(home, away):
     return f"apif_players:{home}|{away}"
 
 
-def _build_players(home, away, key):
-    """Construye los candidatos de props (game-logs de API-Football) para AMBOS equipos y los
-    cachea. Corre en un thread aparte porque son ~22 requests espaciadas ~6s (no bloquea el web)."""
+def _team_candidates(team):
+    """Props de un equipo: ESPN primero (GRATIS, ilimitado; POC validado para SOT/goles/asist),
+    y si ESPN no resuelve, fallback a API-Football (game-logs, gasta cupo). No se MEZCLAN por
+    equipo (tiros totales difiere de definicion) -> una fuente por equipo."""
+    try:
+        import espn_players as ep
+        c = ep.candidates(team, tag=team)
+        if c:
+            return c
+    except Exception:
+        pass
     try:
         import soccer_players as sp
+        return sp.candidates(team, tag=team)
+    except Exception:
+        return []
+
+
+def _build_players(home, away, key):
+    """Construye los candidatos de props para AMBOS equipos y los cachea. Corre en un thread
+    aparte (ESPN es rapido; el fallback API-Football son ~22 requests ~6s) -> no bloquea el web."""
+    try:
         cache.cached(key, _PLAYERS_TTL, lambda: {
             "home": home, "away": away,
-            "players": sp.candidates(home, tag=home) + sp.candidates(away, tag=away),
+            "players": _team_candidates(home) + _team_candidates(away),
         })
     except Exception:
         pass
@@ -250,11 +239,13 @@ def _compute_availability(home, away, date):
     card = next((c for c in wc.get("cards", []) if c.get("home") == home and c.get("away") == away), None)
     if card:
         sensor.merge_lectura(av, card.get("lectura"))
+        sensor.enrich_market_value(av)                   # no-op salvo SENSOR_MARKET_VALUE=1
         an = card.get("analysis")
         if an and an.get("resultado"):
-            probs = [r["cal"] for r in an["resultado"]]
+            probs = [round(r["cal"], 4) for r in an["resultado"]]
             adj, delta = sensor.adjust(probs, av)
-            av["shadow"] = {"cruda": [round(p, 4) for p in probs], "ajustada": adj, "delta": delta}
+            av["shadow"] = {"cruda": probs, "ajustada": adj, "delta": delta}
+            sensor.log_shadow(date, home, away, probs, adj, delta)   # forward-test (pre-partido)
     return av
 
 
@@ -275,15 +266,6 @@ def mlb_today(date: str = None):
     date = date or datetime.date.today().isoformat()
     try:
         return cache.cached(f"cards_mlb:{date}", TTL, lambda: _compute_mlb(date))
-    except Exception as e:
-        return {"date": date, "cards": [], "error": str(e)}
-
-
-@app.get("/api/soccer/today")
-def soccer_today(date: str = None):
-    date = date or datetime.date.today().isoformat()
-    try:
-        return cache.cached(f"cards_soccer:{date}", TTL, lambda: _compute_soccer(date))
     except Exception as e:
         return {"date": date, "cards": [], "error": str(e)}
 

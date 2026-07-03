@@ -17,13 +17,14 @@ acotado y forward-testeado. Aca solo se RECOLECTA y ESTRUCTURA.
 Uso:
   python sensor.py "Spain" "Austria" 2026-07-02
 """
-import sys, math, datetime
+import os, sys, json, glob, math, datetime
 import requests
 import cache, lineups
 
 sys.stdout.reconfigure(encoding="utf-8")
 SB = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world"
 N_RECENT = 5                                   # ventana de partidos para "titular habitual"
+SHADOW_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "shadow")
 
 
 def _schedule(team_id):
@@ -163,15 +164,40 @@ ADJ_CAP = 0.04            # tope del ajuste: nunca mueve mas de 4pp
 ADJ_PER_UNIT = 0.012      # pp por unidad de severidad neta de ausencias
 
 
+def _value_weight(val):
+    """Valor de mercado (€, Transfermarkt) -> peso de importancia acotado [0.2, 1.5]. ~40M = 1.0.
+    Ancla OBJETIVA que reemplaza la etiqueta de impacto de la IA cuando esta disponible."""
+    return max(0.2, min(1.5, val / 40_000_000))
+
+
 def _severity(block):
-    """Severidad de ausencias de un equipo = suma de pesos por impacto. Combina el ausente
-    ESPN-derivado (titular habitual afuera del XI) con las bajas que aporta la IA."""
+    """Severidad de ausencias de un equipo = suma de pesos por importancia. Combina el ausente
+    ESPN-derivado (titular habitual afuera del XI) con las bajas que aporta la IA. Si una baja
+    trae 'valor' (Transfermarkt), pesa por valor de mercado; si no, por la etiqueta de impacto."""
     if not block:
         return 0.0
     s = IMPACT_W["titular"] * len(block.get("ausentes") or [])
     for b in (block.get("bajas_ia") or []):
-        s += IMPACT_W.get((b.get("impacto") or "titular").lower(), 0.4)
+        val = b.get("valor")
+        s += _value_weight(val) if val else IMPACT_W.get((b.get("impacto") or "titular").lower(), 0.4)
     return s
+
+
+def enrich_market_value(av):
+    """Agrega 'valor' (Transfermarkt) a cada baja de la IA -> pondera la severidad por importancia
+    objetiva. BEST-EFFORT y OFF por defecto: solo corre si env SENSOR_MARKET_VALUE=1 (el scraping
+    es fragil; no va en el path de render salvo que se active a proposito). Muta y devuelve av."""
+    if os.environ.get("SENSOR_MARKET_VALUE") != "1":
+        return av
+    try:
+        import transfermarkt as tm
+    except Exception:
+        return av
+    for side in ("home", "away"):
+        for b in ((av.get(side) or {}).get("bajas_ia") or []):
+            if "valor" not in b:
+                b["valor"] = tm.market_value(b.get("jugador", ""))
+    return av
 
 
 def adjust(probs, av, cap=ADJ_CAP):
@@ -189,10 +215,84 @@ def adjust(probs, av, cap=ADJ_CAP):
     return [round(h2 / tot, 4), round(d / tot, 4), round(a2 / tot, 4)], round(delta, 4)
 
 
+# ── Forward-test del ajuste shadow: loguear cruda vs ajustada, evaluar Brier ──────
+# El ajuste SOLO se gradua (se pasa a aplicar) si baja el Brier de forma sostenida.
+
+def log_shadow(date, home, away, cruda, ajustada, delta):
+    """Persiste cruda vs ajustada del partido (pre-partido, anti-fuga) en data/shadow/{date}.json.
+    Idempotente: reescribe la entrada del partido. NO evalua (eso es shadow_verdict tras el cierre)."""
+    try:
+        os.makedirs(SHADOW_DIR, exist_ok=True)
+        p = os.path.join(SHADOW_DIR, f"{date}.json")
+        data = {}
+        if os.path.exists(p):
+            with open(p, encoding="utf-8-sig") as f:
+                data = json.load(f)
+        data[f"{home} vs {away}"] = {"home": home, "away": away,
+                                     "cruda": cruda, "ajustada": ajustada, "delta": delta}
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def _wc_result(home, away, date):
+    """Outcome 1X2 real (0=local,1=empate,2=visita) desde ESPN, orientado al home del input.
+    None si el partido no finalizo o no se encuentra."""
+    try:
+        import odds
+        for ev in odds._events(date):
+            comp = ev["competitions"][0]
+            cs = {c["homeAway"]: c for c in comp["competitors"]}
+            names = {c["team"]["displayName"].lower() for c in comp["competitors"]}
+            if home.lower() not in names or away.lower() not in names:
+                continue
+            if (comp.get("status") or {}).get("type", {}).get("name", "") not in ("STATUS_FULL_TIME", "STATUS_FINAL"):
+                return None
+            hs, as_ = int(cs["home"]["score"]), int(cs["away"]["score"])
+            if cs["home"]["team"]["displayName"].lower() != home.lower():   # ESPN orienta al reves
+                hs, as_ = as_, hs
+            return 0 if hs > as_ else 2 if as_ > hs else 1
+    except Exception:
+        return None
+    return None
+
+
+def shadow_verdict():
+    """Forward-test: Brier(cruda) vs Brier(ajustada) sobre los partidos shadow YA resueltos.
+    {n, brier_cruda, brier_ajustada}. brier menor = mejor; si ajustada gana sostenido, se aplica."""
+    rows = []
+    for fp in glob.glob(os.path.join(SHADOW_DIR, "*.json")):
+        date = os.path.basename(fp)[:-5]
+        try:
+            with open(fp, encoding="utf-8-sig") as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        for m in data.values():
+            res = _wc_result(m["home"], m["away"], date)
+            if res is not None:
+                rows.append((res, m["cruda"], m["ajustada"]))
+
+    def brier(which):
+        if not rows:
+            return None
+        s = 0.0
+        for res, cru, adj in rows:
+            probs = cru if which == "cruda" else adj
+            s += sum((probs[k] - (1.0 if k == res else 0.0)) ** 2 for k in range(3))
+        return round(s / len(rows), 4)
+
+    return {"n": len(rows), "brier_cruda": brier("cruda"), "brier_ajustada": brier("ajustada")}
+
+
 def main():
     args = [a for a in sys.argv[1:]]
+    if args and args[0] == "verdict":
+        print("  Forward-test ajuste shadow:", shadow_verdict())
+        return
     if len(args) < 2:
-        print('  Uso: sensor.py "<local>" "<visita>" [fecha]')
+        print('  Uso: sensor.py "<local>" "<visita>" [fecha]   |   sensor.py verdict')
         return
     date = args[2] if len(args) > 2 else datetime.date.today().isoformat()
     av = availability(args[0], args[1], date)

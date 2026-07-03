@@ -82,3 +82,19 @@ def test_adjust_simetrico_favorece_al_menos_golpeado():
     av = {"home": {"ausentes": []}, "away": {"ausentes": [{"name": "X"}, {"name": "Y"}]}}
     probs, delta = sensor.adjust([0.5, 0.25, 0.25], av)
     assert delta < 0 and probs[0] > 0.5               # visita golpeada -> sube local
+
+
+# ── Valor de mercado (Transfermarkt) en la severidad ──────────────────────────
+
+def test_value_weight_acotado():
+    assert sensor._value_weight(40_000_000) == 1.0
+    assert sensor._value_weight(5_000) == 0.2          # piso
+    assert sensor._value_weight(500_000_000) == 1.5    # techo
+
+
+def test_severity_usa_valor_si_esta_presente():
+    # baja con valor de mercado (200M -> techo 1.5) pesa mas que la etiqueta 'suplente' (0.2)
+    con_valor = {"ausentes": [], "bajas_ia": [{"jugador": "Yamal", "impacto": "suplente", "valor": 200_000_000}]}
+    sin_valor = {"ausentes": [], "bajas_ia": [{"jugador": "Yamal", "impacto": "suplente"}]}
+    assert sensor._severity(con_valor) == 1.5          # manda el valor de mercado
+    assert sensor._severity(sin_valor) == 0.2          # cae a la etiqueta de impacto

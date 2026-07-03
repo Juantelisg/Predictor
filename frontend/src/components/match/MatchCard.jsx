@@ -32,7 +32,6 @@ export default function MatchCard({ card, compact = false }) {
   const { selectMatch, selectedMatch } = useSport()
   const picks = card.analysis?.picks ?? []
   const hasPicks = picks.length > 0
-  const hasStrongEdge = card.edge?.rows?.some(r => r.tier === 'FUERTE')
   const isSelected = selectedMatch?.home === card.home && selectedMatch?.away === card.away
 
   if (compact) {
@@ -49,7 +48,6 @@ export default function MatchCard({ card, compact = false }) {
           <Flag url={card.home_flag} code={card.home_code} />
           <span className="text-xs text-body truncate flex-1">{card.home}</span>
           {hasPicks && <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />}
-          {hasStrongEdge && <span className="w-1.5 h-1.5 rounded-full bg-hot shrink-0" />}
         </div>
         <div className="flex items-center gap-2">
           <Flag url={card.away_flag} code={card.away_code} />
@@ -72,12 +70,6 @@ export default function MatchCard({ card, compact = false }) {
           <span className="text-[11px] px-2 py-0.5 rounded-full border font-medium"
             style={{ background: 'rgba(94,234,212,0.1)', color: '#5eead4', borderColor: 'rgba(94,234,212,0.2)' }}>
             ✓ Picks
-          </span>
-        )}
-        {hasStrongEdge && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full border font-medium"
-            style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185', borderColor: 'rgba(251,113,133,0.2)' }}>
-            ⚡ Edge
           </span>
         )}
       </div>
