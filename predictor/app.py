@@ -166,12 +166,6 @@ def _compute_wc(date):
 @app.get("/api/wc/today")
 def wc_today(date: str = None):
     date = date or datetime.date.today().isoformat()
-    if date == datetime.date.today().isoformat():        # Render autosuficiente: si faltan las
-        try:                                             # lecturas de hoy y hay API key, las genera
-            import lecturas_auto                         # (web search + Transfermarkt) en background,
-            lecturas_auto.generate(date)                 # gateado. No-op si ya estan o sin key.
-        except Exception:
-            pass
     try:
         return cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
     except Exception as e:
