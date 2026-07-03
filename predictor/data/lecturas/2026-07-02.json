@@ -10,20 +10,42 @@
    "Modelo: España ~81% (el recalibrador subconfía en favoritos, pero las bajas ofensivas justifican no exagerar). Over 1.5 sólido (~90%); Over 2.5 (58%) y BTTS (41%) son moneda — Austria puede hacerlo áspero."
   ],
   "sources": [
-   {"title": "Sports Mole · team news / XI probables", "url": "https://www.sportsmole.co.uk/football/spain/world-cup-2026/team-news/spain-vs-austria-injury-suspension-lists-predicted-xis_600400.html"},
-   {"title": "Bolavip · por qué no juega Nico Williams", "url": "https://bolavip.com/en/world-cup/why-isnt-nico-williams-playing-today-for-spain-vs-austria-at-the-2026-world-cup"},
-   {"title": "ESPN · lesión de Nico Williams", "url": "https://www.espn.com/soccer/story/_/id/49200729/spain-nico-williams-injury-yeremy-pino-2026-world-cup"}
+   {
+    "title": "Sports Mole · team news / XI probables",
+    "url": "https://www.sportsmole.co.uk/football/spain/world-cup-2026/team-news/spain-vs-austria-injury-suspension-lists-predicted-xis_600400.html"
+   },
+   {
+    "title": "Bolavip · por qué no juega Nico Williams",
+    "url": "https://bolavip.com/en/world-cup/why-isnt-nico-williams-playing-today-for-spain-vs-austria-at-the-2026-world-cup"
+   },
+   {
+    "title": "ESPN · lesión de Nico Williams",
+    "url": "https://www.espn.com/soccer/story/_/id/49200729/spain-nico-williams-injury-yeremy-pino-2026-world-cup"
+   }
   ],
   "generated_at": "2026-07-02",
   "disponibilidad": {
    "home": {
     "bajas": [
-     {"jugador": "Nico Williams", "pos": "F", "impacto": "clave"},
-     {"jugador": "Yeremy Pino", "pos": "F", "impacto": "suplente"}
+     {
+      "jugador": "Nico Williams",
+      "pos": "F",
+      "impacto": "clave",
+      "valor": 40000000
+     },
+     {
+      "jugador": "Yeremy Pino",
+      "pos": "F",
+      "impacto": "suplente",
+      "valor": 30000000
+     }
     ],
     "motivacion": "must-win"
    },
-   "away": {"bajas": [], "motivacion": "must-win"}
+   "away": {
+    "bajas": [],
+    "motivacion": "must-win"
+   }
   }
  },
  "20260702-CRO-POR": {
@@ -37,14 +59,29 @@
    "Modelo: Portugal ~58% (leve favorito); el empate (30%) es escenario muy vivo entre dos parejos. Over 1.5 (89%) es el pick más firme; BTTS 58% refleja que Croacia rara vez se queda en cero."
   ],
   "sources": [
-   {"title": "Sports Mole · team news / XI probables", "url": "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/team-news/portugal-vs-croatia-injury-suspension-list-predicted-xis_600440.html"},
-   {"title": "Yahoo Sports · lineups y team news", "url": "https://uk.sports.yahoo.com/news/portugal-vs-croatia-lineups-predicted-120904031.html"},
-   {"title": "Sports Illustrated · preview y lineups", "url": "https://www.si.com/soccer/portugal-vs-croatia-world-cup-preview-predictions-lineups-7-2-26"}
+   {
+    "title": "Sports Mole · team news / XI probables",
+    "url": "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/team-news/portugal-vs-croatia-injury-suspension-list-predicted-xis_600440.html"
+   },
+   {
+    "title": "Yahoo Sports · lineups y team news",
+    "url": "https://uk.sports.yahoo.com/news/portugal-vs-croatia-lineups-predicted-120904031.html"
+   },
+   {
+    "title": "Sports Illustrated · preview y lineups",
+    "url": "https://www.si.com/soccer/portugal-vs-croatia-world-cup-preview-predictions-lineups-7-2-26"
+   }
   ],
   "generated_at": "2026-07-02",
   "disponibilidad": {
-   "home": {"bajas": [], "motivacion": "must-win"},
-   "away": {"bajas": [], "motivacion": "must-win"}
+   "home": {
+    "bajas": [],
+    "motivacion": "must-win"
+   },
+   "away": {
+    "bajas": [],
+    "motivacion": "must-win"
+   }
   }
  }
 }

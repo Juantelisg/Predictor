@@ -9,7 +9,7 @@ HTML puede cambiar y romper el parser; (3) pueden empezar a bloquear (Cloudflare
 Por eso: cacheado 30 dias (el valor cambia por mes), degrada a None en cualquier fallo, y NO se
 llama en el path de render salvo que se active con env SENSOR_MARKET_VALUE=1.
 """
-import sys, re
+import os, sys, re, json, datetime
 import requests
 import cache
 
@@ -50,7 +50,39 @@ def market_value(name):
         return None
 
 
+LECT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "lecturas")
+
+
+def enrich_lectura(path=None):
+    """Rellena 'valor' (Transfermarkt) en cada baja del bloque `disponibilidad` de una lectura,
+    LOCALMENTE (el server nunca scrapea: solo sirve el JSON ya enriquecido). path=None -> lectura
+    de hoy. Best-effort: los que no resuelven quedan sin valor (el sensor cae a la etiqueta). Idempotente.
+    Devuelve cuantos valores agrego."""
+    path = path or os.path.join(LECT_DIR, f"{datetime.date.today().isoformat()}.json")
+    if not os.path.exists(path):
+        return 0
+    with open(path, encoding="utf-8-sig") as f:
+        data = json.load(f)
+    n = 0
+    for lec in data.values():
+        for side in ("home", "away"):
+            for b in (((lec.get("disponibilidad") or {}).get(side) or {}).get("bajas") or []):
+                if "valor" not in b and b.get("jugador"):
+                    v = market_value(b["jugador"])
+                    if v:
+                        b["valor"] = v
+                        n += 1
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    return n
+
+
 def main():
+    if sys.argv[1:2] == ["enrich"]:
+        path = sys.argv[2] if len(sys.argv) > 2 else None
+        n = enrich_lectura(path)
+        print(f"  Transfermarkt: {n} valores de mercado agregados a la lectura.")
+        return
     for name in (sys.argv[1:] or ["Harry Kane", "Lamine Yamal", "Nico Williams"]):
         v = market_value(name)
         print(f"  {name:<20} -> {('€%.1fM' % (v / 1e6)) if v else 'None'}")
