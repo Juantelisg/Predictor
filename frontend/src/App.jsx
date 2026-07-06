@@ -5,7 +5,10 @@ import SportView from './components/sports/SportView'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Render free tarda en despertar (spin-up 502/503) -> reintentar con backoff
+      // exponential (~1+2+4+8s) para que la carga se auto-recupere en vez de quedar en error.
+      retry: 4,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15000),
       refetchOnWindowFocus: false,
     }
   }

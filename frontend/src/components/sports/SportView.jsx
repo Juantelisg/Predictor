@@ -2,6 +2,7 @@ import { useSport } from '../../hooks/useSport'
 import MatchPicker from '../match/MatchPicker'
 import MatchWorkspace from '../match/MatchWorkspace'
 import OffSeason from './OffSeason'
+import SoccerBoard from './SoccerBoard'
 
 const OFF_SEASON = ['nfl', 'nba']
 
@@ -12,6 +13,15 @@ export default function SportView() {
     return (
       <main className="flex-1 overflow-y-auto">
         <OffSeason sport={sport} />
+      </main>
+    )
+  }
+
+  // Fútbol: vista master-detail dedicada (listado de picks agrupado + detalle del partido).
+  if (sport === 'soccer') {
+    return (
+      <main className="flex-1 overflow-hidden">
+        <SoccerBoard />
       </main>
     )
   }
