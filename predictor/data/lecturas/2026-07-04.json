@@ -1,0 +1,88 @@
+{
+ "20260704-MAR-CAN": {
+  "summary": "Marruecos (6º FIFA) es favorito legítimo y llega de eliminar a Países Bajos por penales, pero Canadá juega su primer octavo histórico y con Davies de vuelta no es trámite: el modelo da 53% al Atlas.",
+  "context": [
+   "Sede: NRG Stadium, Houston · 14:00 ART · cancha neutral (octavos de final, a partido único).",
+   "Cómo llegaron: Canadá fue 2ª de grupo y batió a Sudáfrica en 16avos (primer octavo de su historia); Marruecos eliminó a Países Bajos por penales → experiencia de knockout y 24 puestos de ranking a favor (6º vs ~30º FIFA).",
+   "Bajas: Canadá pierde a Ismael Koné (mediocampista) por fractura de tobillo; Alphonso Davies, recuperado del isquiotibial, entró al 75' vs Sudáfrica y APUNTA a ser titular. Marruecos con plantel completo: Chadi Riad superó un susto muscular y volvió a entrenar sin restricciones.",
+   "XI probable Marruecos (4-2-3-1): Bono; Hakimi, Diop, Riad, Mazraoui; Bouaddi, El Aynaoui; Brahim Díaz, Ounahi, El Khannouss, Saibari. Canadá (4-4-2): Crépeau; Johnston, Bombito, Cornelius, Laryea; Buchanan, Eustáquio, Sigur, Millar; Oluwaseyi, David → Davies como duda de arranque por izquierda.",
+   "Señal cuant: la valla del modelo asigna 39% de arco en cero a Marruecos vs sólo 18% a Canadá — asimetría que refleja el salto de nivel; aun así el empate vale 25% (partido único, siempre vivo).",
+   "Modelo: Marruecos 53% · empate 25% · Canadá 21%. Over 1.5 sólido (pick 82%), pero Over 2.5 (50%) y BTTS (51%) son moneda. 'Marruecos o empate' 79% es el pick más firme; el modelo subconfía en favoritos claros, así que el 53% probablemente sea piso."
+  ],
+  "sources": [
+   {
+    "title": "Al Jazeera · preview / prediction",
+    "url": "https://www.aljazeera.com/sports/2026/7/3/canada-morocco-fifa-world-cup-round-of-16-saibari-prediction-schedule"
+   },
+   {
+    "title": "Sports Mole · team news / XI",
+    "url": "https://www.sportsmole.co.uk/football/morocco/world-cup-2026/team-news/canada-vs-morocco-injury-suspension-list-predicted-xis_600555.html"
+   },
+   {
+    "title": "Canadian Soccer Daily · Davies podría ser titular",
+    "url": "https://canadiansoccerdaily.com/2026/07/01/alphonso-davies-could-start-canadas-world-cup-round-of-16-match-vs-morocco-marsch/"
+   }
+  ],
+  "disponibilidad": {
+   "home": {
+    "bajas": [
+     {
+      "jugador": "Ismael Koné",
+      "pos": "MED",
+      "impacto": "titular",
+      "valor": 25000000
+     }
+    ],
+    "motivacion": "must-win"
+   },
+   "away": {
+    "bajas": [
+     {
+      "jugador": "Chadi Riad",
+      "pos": "DEF",
+      "impacto": "duda",
+      "valor": 15000000
+     }
+    ],
+    "motivacion": "must-win"
+   }
+  },
+  "generated_at": "2026-07-04"
+ },
+ "20260704-FRA-PAR": {
+  "summary": "Francia es favorito abrumador (Opta 79.7% a 90') y no tiene bajas; Paraguay llega de eliminar a Alemania por penales y se atrincherará: la duda es el margen, no el ganador.",
+  "context": [
+   "Sede: Lincoln Financial Field, Filadelfia · 18:00 ART · cancha neutral (octavos de final, a partido único).",
+   "Cómo llegaron: Paraguay dio la sorpresa del torneo eliminando a Alemania en 16avos (héroe: el arquero Gill en la tanda de penales); Francia, de Deschamps, entra como candidata seria — Olise ya suma 5 asistencias, a una del récord histórico de Pelé en un Mundial.",
+   "Bajas: sin ausencias confirmadas en ninguno de los dos. Francia repite el XI asentado que usó ante Suecia; Paraguay llega entero para plantar su bloque bajo.",
+   "XI probable Francia (4-2-3-1): Maignan; Koundé, Upamecano, Saliba, Digne; Tchouaméni, Rabiot; Dembélé, Olise, Barcola; Mbappé. Paraguay (bloque defensivo 5-3-2): Gill; Cáceres, Gustavo Gómez, Alderete, Alonso; Cubas de ancla, Galarza, Diego Gómez; Almirón, Enciso → planteo ultradefensivo para congestionar el medio.",
+   "Señal cuant: el supercomputador de Opta da 79.7% de triunfo francés a los 90'; el modelo va apenas por debajo (73%), coherente con su sesgo conocido de subconfiar en favoritos claros → el 73% es piso.",
+   "Modelo: Francia 73% · empate 18% · Paraguay 9%. 'Francia o empate' 91% y valla francesa 58% son los picks más firmes; BTTS sólo 38% y 'No ambos marcan' 62% capturan el bloque bajo paraguayo (poca chance de que convierta). Over 1.5 82%, pero Over 2.5 es moneda (50%): Francia puede resolver por poco margen ante un rival atrincherado."
+  ],
+  "sources": [
+   {
+    "title": "RotoWire · preview / predicted lineups",
+    "url": "https://www.rotowire.com/soccer/article/paraguay-vs-france-preview-predicted-lineups-team-news-tactical-analysis-2026-world-cup-round-of-16-120852"
+   },
+   {
+    "title": "Opta Analyst · prediction (79.7%)",
+    "url": "https://theanalyst.com/articles/paraguay-vs-france-prediction-world-cup-2026-match-preview"
+   },
+   {
+    "title": "Goal · preview",
+    "url": "https://www.goal.com/en/news/paraguay-france-world-cup-preview/blt712b3214d1bbc4da"
+   }
+  ],
+  "disponibilidad": {
+   "home": {
+    "bajas": [],
+    "motivacion": "must-win"
+   },
+   "away": {
+    "bajas": [],
+    "motivacion": "must-win"
+   }
+  },
+  "generated_at": "2026-07-04"
+ }
+}

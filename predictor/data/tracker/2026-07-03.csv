@@ -1,0 +1,11 @@
+﻿Hora,Partido,Ronda,Mercado,Pick,Prob %,Confianza,Cuota,Edge %,Tier,Contexto,Decision,Stake,Notas,Cumplió,Resultado,PnL
+15:00,Australia vs Egypt,WC,Doble oport.,Australia o empate,85,ALTA,,,,,,,,✓,1-1 (90') · pens,
+15:00,Australia vs Egypt,WC,Goles,Over 1.5,74,ALTA,,,,,,,,✓,1-1 (90'),
+19:00,Argentina vs Cape Verde,WC,Doble oport.,Argentina o empate,100,ALTA,,,,,,,,✓,1-1 (90'),
+19:00,Argentina vs Cape Verde,WC,Resultado,Gana Argentina,92,ALTA,1.143,5.6,PASAR,,JUGAR,,"Cabo Verde bunker, ojo el over",✗,1-1 (90') · 3-2 AET,
+19:00,Argentina vs Cape Verde,WC,BTTS,No ambos,91,ALTA,,,,,,,,✗,1-1 (90'),
+19:00,Argentina vs Cape Verde,WC,Goles,Over 1.5,86,ALTA,,,,,,,,✓,1-1 (90'),
+22:30,Colombia vs Ghana,WC,Doble oport.,Colombia o empate,100,ALTA,,,,,,,,✓,1-0,
+22:30,Colombia vs Ghana,WC,Resultado,Gana Colombia,87,ALTA,1.426,18.1,SOSPECHOSO,,,,,✓,1-0,
+22:30,Colombia vs Ghana,WC,BTTS,No ambos,86,ALTA,,,,,,,,✓,1-0,
+22:30,Colombia vs Ghana,WC,Goles,Over 1.5,76,ALTA,,,,,,,,✗,1-0,

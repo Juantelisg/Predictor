@@ -1,0 +1,100 @@
+{
+ "20260705-NOR-BRA": {
+  "summary": "Brasil (Ancelotti) es favorito claro y llega de ganarle a Japón sobre la hora, pero Noruega tiene a Haaland en racha y el modelo le da 59% al Scratch: sólido, no lock.",
+  "context": [
+   "Sede: MetLife Stadium, East Rutherford · 17:00 ART · cancha neutral (octavos de final, a partido único).",
+   "Cómo llegaron: Brasil sufrió para ganarle 2-1 a Japón en 16avos con gol sobre la hora; Noruega necesitó un tanto tardío de Haaland para eliminar 2-1 a Costa de Marfil. Brasil parte con ~25 puestos de ranking a favor.",
+   "Bajas: Brasil pierde a Raphinha (desgarro isquiotibial sufrido vs Haití en fase de grupos); Lucas Paquetá es duda y si no llega entra Danilo Santos. Casemiro superó un susto físico y apunta a titular. Noruega llega con Haaland a pleno (5 goles en el torneo).",
+   "XI probable Brasil (4-2-3-1): Alisson; Danilo, Gabriel, Marquinhos, Douglas Santos; Casemiro, Bruno Guimarães; Rayan, Matheus Cunha, Vinicius Jr, con Endrick empujando por un lugar. Noruega se apoya en Haaland y el bloque bajo + transición.",
+   "Señal cuant: el modelo da 59% a Brasil pero sólo 31% de arco en cero — con Haaland en racha, el BTTS (58%) y el Over 1.5 (80%) son el terreno más firme; Noruega marcando aunque pierda es escenario real.",
+   "Modelo: Brasil 59% · empate 29% · Noruega 11%. 'Over 1.5' es el pick más sólido (90%) y 'Brasil o empate' (89%) cubre la sorpresa; Over 2.5 (57%) y BTTS (58%) son moneda. El modelo subconfía en favoritos claros → el 59% probablemente sea piso, pero Haaland mete varianza."
+  ],
+  "sources": [
+   {
+    "title": "ESPN · preview / predicted lineups",
+    "url": "https://www.espn.com/soccer/story/_/id/49256507/brazil-vs-norway-fifa-world-cup-2026-tv-channel-how-watch-kickoff-live-stream-injury-predicted-lineups"
+   },
+   {
+    "title": "Sports Mole · team news / XI",
+    "url": "https://www.sportsmole.co.uk/football/brazil/world-cup-2026/team-news/brazil-vs-norway-injury-suspension-list-predicted-xis_600644.html"
+   },
+   {
+    "title": "Sports Illustrated · Brazil predicted lineup",
+    "url": "https://www.si.com/soccer/brazil-predicted-lineup-vs-norway-world-cup-7-5-26"
+   }
+  ],
+  "disponibilidad": {
+   "home": {
+    "bajas": [
+     {
+      "jugador": "Raphinha",
+      "pos": "DEL",
+      "impacto": "clave",
+      "valor": 70000000
+     },
+     {
+      "jugador": "Lucas Paquetá",
+      "pos": "MED",
+      "impacto": "duda",
+      "valor": 32000000
+     }
+    ],
+    "motivacion": "must-win"
+   },
+   "away": {
+    "bajas": [],
+    "motivacion": "must-win"
+   }
+  },
+  "generated_at": "2026-07-05"
+ },
+ "20260705-ENG-MEX": {
+  "summary": "El más parejo del día: el modelo ve 37% Inglaterra · 33% México. Inglaterra (Tuchel) pierde a sus dos laterales derechos y juega en la altura de Ciudad de México: sin favorito claro, el value va por goles.",
+  "context": [
+   "Sede: Ciudad de México (altitud ~2240 m) · 21:00 ART · localía de facto y altura a favor de México (octavos, a partido único).",
+   "Cómo llegaron: México llega firme con Jiménez y Quiñones en racha (ambos marcaron vs Ecuador); Inglaterra avanzó pero sufriendo, con Declan Rice saliendo con calambres vs RD Congo (se recupera, sólo cansancio).",
+   "Bajas: Inglaterra pierde a Reece James (isquiotibial, entrenó en solitario, no llega a tiempo) y a Jarrell Quansah (tobillo) → lateral derecho y fondo tocados; Tuchel deberá improvisar por derecha. México sin bajas reportadas.",
+   "XI probable México (4-3-3): Rangel; Sánchez, Montes, Vásquez, Gallardo; Romo, Lira, Mora; Alvarado, Jiménez, Quiñones. Inglaterra (4-2-3-1): Pickford; Konsa, Guéhi, Stones, O'Reilly; Anderson, Rice; Saka, Bellingham, Gordon; Kane.",
+   "Señal cuant: la valla del modelo es baja para ambos (México 24%, Inglaterra 31%) y el BTTS (53%) roza moneda; con la altura y una Inglaterra sin sus laterales derechos naturales, el Over 1.5 (74%) y 'Sin empate' (71%) son los ángulos con más sustento.",
+   "Modelo: Inglaterra 37% · empate 29% · México 33% — sin favorito claro. Los picks van por mercados de goles: Over 1.5 (79%) y 'Sin empate' (71%). Ojo: la altura de Ciudad de México puede inclinar la balanza hacia México más de lo que capta el Elo."
+  ],
+  "sources": [
+   {
+    "title": "Al Jazeera · preview / altitude",
+    "url": "https://www.aljazeera.com/sports/2026/7/5/mexico-vs-england-fifa-world-cup-2026-kane-prediction-kickoff-time-altitude-round-of-16"
+   },
+   {
+    "title": "Sports Mole · team news / XI",
+    "url": "https://www.sportsmole.co.uk/football/england/world-cup-2026/team-news/mexico-vs-england-injury-suspension-list-predicted-xis_600613.html"
+   },
+   {
+    "title": "RotoWire · preview / predicted lineups",
+    "url": "https://www.rotowire.com/soccer/article/mexico-vs-england-preview-predicted-lineups-team-news-tactical-analysis-2026-world-cup-round-of-16-121007"
+   }
+  ],
+  "disponibilidad": {
+   "home": {
+    "bajas": [],
+    "motivacion": "must-win"
+   },
+   "away": {
+    "bajas": [
+     {
+      "jugador": "Reece James",
+      "pos": "DEF",
+      "impacto": "titular",
+      "valor": 60000000
+     },
+     {
+      "jugador": "Jarrell Quansah",
+      "pos": "DEF",
+      "impacto": "suplente",
+      "valor": 45000000
+     }
+    ],
+    "motivacion": "must-win"
+   }
+  },
+  "generated_at": "2026-07-05"
+ }
+}

@@ -13,6 +13,7 @@ Levantar (local):
 Deploy (Render): ver render.yaml en la raiz del repo.
 """
 import os, sys, datetime, json, threading
+from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -131,33 +132,42 @@ def _edge_for(an, date):
                      for i, r in enumerate(rows)]}
 
 
+def _wc_card(g, date, ctx, lect):
+    """Arma la tarjeta de UN partido (o None si no es de `date`). Aislado para poder
+    computar los partidos del dia en paralelo (analyze liviano + fetch de cuota ESPN I/O)."""
+    ts = g.get("timestamp")
+    if not ts:
+        return None
+    d_art, t_art = _art(ts)
+    if d_art != date:                              # Linemate trae ventana movil -> filtrar por dia ARG
+        return None
+    h = g.get("homeTeamData", {}).get("info", {})
+    a = g.get("awayTeamData", {}).get("info", {})
+    gid = g.get("id")
+    an = analizar.analyze(h.get("name", ""), a.get("name", ""), neutral=True,
+                          lm_codes=[h.get("code"), a.get("code")], league="wc", ctx=ctx, date=d_art)
+    return {"gid": gid, "cat": SOC_CAT, "tag": "WC", "time": t_art, "date": d_art,
+            "status": g.get("status"), "home": h.get("name"), "away": a.get("name"),
+            "home_code": h.get("code"), "away_code": a.get("code"),
+            "home_flag": _flag(h.get("code")), "away_flag": _flag(a.get("code")),
+            "analysis": None if an.get("error") else an,
+            "analysis_error": an.get("error"), "lectura": lect.get(gid),
+            "edge": _edge_for(an, d_art)}
+
+
 def _compute_wc(date):
     """Partidos del Mundial de `date` (hora ARG) desde Linemate + analisis precomputado.
     Cada tarjeta trae: logos (bandera), hora ARG, el cuadro/picks del modelo y la lectura
-    (contexto en vivo) si esta cacheada. Todo listo de entrada -> el desplegable es instantaneo."""
+    (contexto en vivo) si esta cacheada. Todo listo de entrada -> el desplegable es instantaneo.
+
+    Los partidos se arman EN PARALELO: el fit de Elo (`load_ctx`) se hace una sola vez y se
+    comparte; despues cada tarjeta corre en su hilo -> los fetch de cuota ESPN (I/O) se solapan
+    y el computo frio del slate cae ~3x (era el cuello del arranque en Render free)."""
     games = linemate.games("wc")
     lect = _load_lecturas(date)
-    ctx = analizar.load_ctx()                      # Elo se carga UNA vez para todos los partidos
-    cards = []
-    for g in games:
-        ts = g.get("timestamp")
-        if not ts:
-            continue
-        d_art, t_art = _art(ts)
-        if d_art != date:                          # Linemate trae ventana movil -> filtrar por dia ARG
-            continue
-        h = g.get("homeTeamData", {}).get("info", {})
-        a = g.get("awayTeamData", {}).get("info", {})
-        gid = g.get("id")
-        an = analizar.analyze(h.get("name", ""), a.get("name", ""), neutral=True,
-                              lm_codes=[h.get("code"), a.get("code")], league="wc", ctx=ctx, date=d_art)
-        cards.append({"gid": gid, "cat": SOC_CAT, "tag": "WC", "time": t_art, "date": d_art,
-                      "status": g.get("status"), "home": h.get("name"), "away": a.get("name"),
-                      "home_code": h.get("code"), "away_code": a.get("code"),
-                      "home_flag": _flag(h.get("code")), "away_flag": _flag(a.get("code")),
-                      "analysis": None if an.get("error") else an,
-                      "analysis_error": an.get("error"), "lectura": lect.get(gid),
-                      "edge": _edge_for(an, d_art)})
+    ctx = analizar.load_ctx()                      # Elo se fitea UNA vez para todos los partidos
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        cards = [c for c in ex.map(lambda g: _wc_card(g, date, ctx, lect), games) if c]
     cards.sort(key=lambda c: c["time"])
     return {"date": date, "note": "Mundial 2026 · modelo estadistico (sin cuotas) · hora argentina · "
             "lectura = contexto en vivo precomputado", "cards": cards}
@@ -170,6 +180,24 @@ def wc_today(date: str = None):
         return cache.cached(f"cards_wc:{date}", TTL, lambda: _compute_wc(date))
     except Exception as e:
         return {"date": date, "cards": [], "error": str(e)}
+
+
+@app.on_event("startup")
+def _warm_cache():
+    """Precalienta el slate del dia (WC + MLB) en un hilo apenas arranca el proceso, para que
+    el primer request del front encuentre el cache YA poblado en vez de disparar el computo de
+    ~8s. Critico en Render free: el disco es efimero -> cada spin-up parte de cache frio. El
+    hilo es daemon y no bloquea ni el arranque ni el health check; el single-flight del cache
+    hace que si el request llega mientras se computa, lo comparta en vez de duplicarlo."""
+    def go():
+        date = datetime.date.today().isoformat()
+        for key, fn in ((f"cards_wc:{date}", lambda: _compute_wc(date)),
+                        (f"cards_mlb:{date}", lambda: _compute_mlb(date))):
+            try:
+                cache.cached(key, TTL, fn)
+            except Exception:
+                pass
+    threading.Thread(target=go, daemon=True).start()
 
 
 _PLAYERS_TTL = 12 * 3600
