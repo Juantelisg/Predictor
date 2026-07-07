@@ -202,9 +202,12 @@ def predict_corners(home, away, factor=1.0):
             cumulative += p; p *= lam / (i + 1)
         return 1.0 - cumulative
 
+    # curva P(over) por linea (5.5..12.5): la consume analizar._best_ou para la linea dinamica.
+    curve = [[L, round(over_total(L), 4)] for L in (5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5)]
     return dict(
         home=H, away=A, source="StatsBomb",
         lh=round(lh, 2), la=round(la, 2), total_exp=round(lh + la, 2),
+        curve=curve,
         over85=round(over_total(8.5), 3),
         over95=round(over_total(9.5), 3),
         over105=round(over_total(10.5), 3),
@@ -250,9 +253,12 @@ def predict_cards(home, away, factor=1.0):
     def over_total(n):
         return float(sum(M[i, j] for i in range(M.shape[0]) for j in range(M.shape[1]) if i + j > n))
 
+    # curva P(over) por linea (1.5..6.5): la consume analizar._best_ou para la linea dinamica.
+    curve = [[L, round(over_total(L), 4)] for L in (1.5, 2.5, 3.5, 4.5, 5.5, 6.5)]
     return dict(
         home=H, away=A, source="StatsBomb",
         lh=round(lh, 2), la=round(la, 2), total_exp=round(lh + la, 2),
+        curve=curve,
         over25=round(over_total(2.5), 3),
         over35=round(over_total(3.5), 3),
         over45=round(over_total(4.5), 3),

@@ -51,17 +51,39 @@ def _model_rows(date):
             picks = [{"market": "Resultado 1X2", "pick": fav["label"],
                       "prob": fav["cal"], "level": app._lvl(fav["cal"])}]
         for p in picks:
-            team = p["pick"].replace("Gana ", "").strip()   # pick 1X2 = "Gana X" -> label edge = "X"
-            e = edge_by_label.get(team) or edge_by_label.get(p["pick"])
+            # la confiable y, si es O/U, seguido la SIGUIENTE linea (alt, menos %): 'indicar todo'
+            entries = [(p["pick"], p["prob"], p.get("level", ""), False)]
+            if p.get("alt"):
+                a = p["alt"]
+                entries.append((a["pick"], a["prob"], app._lvl(a["prob"]), True))
+            for pick_label, prob, level, is_alt in entries:
+                team = pick_label.replace("Gana ", "").strip()   # pick 1X2 = "Gana X" -> label edge = "X"
+                e = edge_by_label.get(team) or edge_by_label.get(pick_label)
+                rows.append({
+                    "Hora": c["time"], "Partido": partido, "Ronda": c.get("tag", ""),
+                    "Mercado": p["market"] + (" · sig" if is_alt else ""), "Pick": pick_label,
+                    "Prob %": round(prob * 100), "Confianza": level,
+                    "Cuota": (e or {}).get("odds", ""),
+                    "Edge %": round(e["edge"] * 100, 1) if e else "",
+                    "Tier": (e or {}).get("tier", ""),
+                    "Contexto": summary, "Decision": "", "Stake": "", "Notas": "",
+                    "Resultado": "", "PnL": "",
+                })
+        # props de jugador (SOT / gol+asist / tapadas), gateados por posicion+volumen y contraidos.
+        # Van como filas propias marcadas 'Prop' (mayor varianza, sin cuota) -> el usuario los ve en el sheet.
+        try:
+            import espn_players as ep
+            props = ep.match_props(c["home"], c["away"], date)
+        except Exception:
+            props = []
+        for pr in props:
             rows.append({
                 "Hora": c["time"], "Partido": partido, "Ronda": c.get("tag", ""),
-                "Mercado": p["market"], "Pick": p["pick"],
-                "Prob %": round(p["prob"] * 100), "Confianza": p.get("level", ""),
-                "Cuota": (e or {}).get("odds", ""),
-                "Edge %": round(e["edge"] * 100, 1) if e else "",
-                "Tier": (e or {}).get("tier", ""),
-                "Contexto": summary, "Decision": "", "Stake": "", "Notas": "",
-                "Resultado": "", "PnL": "",
+                "Mercado": f"Prop: {pr['market']}", "Pick": f"{pr['who']} O{pr['line']}",
+                "Prob %": round(pr["p"] * 100), "Confianza": app._lvl(pr["p"]),
+                "Cuota": "", "Edge %": "", "Tier": "",
+                "Contexto": f"L10 {pr['hits_l10']}/{pr['games_l10']} ({pr['l10']}%) · {pr['position']} · varianza alta",
+                "Decision": "", "Stake": "", "Notas": "", "Resultado": "", "PnL": "",
             })
     rows.sort(key=lambda r: (r["Hora"], -r["Prob %"]))
     return rows
@@ -111,9 +133,41 @@ def _badge(v, hue):
     return f'<td style="text-align:center"><span class="badge" style="--h:{hue}">{v}</span></td>'
 
 
-def _render_html(path, rows, date):
+def _strategy(date):
+    """Jugadas recomendadas (estrategia.recommend) sobre las tarjetas del dia. Best-effort:
+    corre simulate (Monte Carlo) para los combos correlacionados; nunca rompe el sheet."""
+    try:
+        import estrategia
+        cards = app._compute_wc(date).get("cards", [])
+        return estrategia.recommend(cards).get("plays", [])
+    except Exception:
+        return []
+
+
+def _strategy_html(plays):
+    """Bloque 'Como jugar hoy': ancla + combos con su conjunta y fundamento. '' si no hay."""
+    if not plays:
+        return ""
+    cards = []
+    for pl in plays:
+        legs = "".join(
+            f'<div class="leg"><span class="lm">{html.escape(l["market"])}</span>'
+            f'<span class="lp">{html.escape(l["pick"])}</span>'
+            f'<span class="lpr">{round(l["prob"] * 100)}%</span></div>'
+            for l in pl["legs"])
+        cards.append(
+            f'<div class="play"><div class="ph"><span class="pt">{html.escape(pl["tipo"])}</span>'
+            f'<span class="pj">conjunta {round(pl["joint"] * 100)}%</span></div>'
+            f'<div class="legs">{legs}</div>'
+            f'<p class="pr">{html.escape(pl["rationale"])}</p></div>')
+    return ('<div class="strat"><h2>Cómo jugar hoy</h2>'
+            f'<div class="plays">{"".join(cards)}</div></div>')
+
+
+def _render_html(path, rows, date, plays=None):
     """Vista en vivo: tabla oscura que se auto-refresca cada 5s (meta refresh -> anda con file://)."""
     now = datetime.datetime.now().strftime("%H:%M:%S")
+    strat = _strategy_html(plays)
 
     def cell(row, col):
         v = html.escape(str(row.get(col, "") or ""))
@@ -131,7 +185,19 @@ def _render_html(path, rows, date):
         return f'<td style="text-align:{align}">{v}</td>'
 
     head = "".join(f"<th>{html.escape(c)}</th>" for c in COLS)
-    body = "".join("<tr>" + "".join(cell(r, c) for c in COLS) + "</tr>" for r in rows)
+    # agrupa por partido: un encabezado por partido y debajo sus logros (orden = primera aparicion,
+    # o sea por hora/prob). El CSV queda plano; el agrupado es solo la vista.
+    groups = {}
+    for r in rows:
+        groups.setdefault(r.get("Partido", ""), []).append(r)
+    body_parts = []
+    for partido, grp in groups.items():
+        first = grp[0]
+        meta = "  ·  ".join(x for x in (first.get("Hora"), first.get("Ronda")) if x)
+        label = html.escape(partido) + (f'<span class="rd">  ·  {html.escape(meta)}</span>' if meta else "")
+        body_parts.append(f'<tr class="grp"><td colspan="{len(COLS)}">{label}</td></tr>')
+        body_parts += ["<tr>" + "".join(cell(r, c) for c in COLS) + "</tr>" for r in grp]
+    body = "".join(body_parts)
     doc = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta http-equiv="refresh" content="5">
 <title>Tracker {date}</title>
@@ -160,9 +226,26 @@ def _render_html(path, rows, date):
  .badge{{display:inline-block;padding:1px 8px;border-radius:6px;font-size:11px;font-weight:590;
   color:var(--h);background:color-mix(in srgb,var(--h) 16%,transparent);
   border:1px solid color-mix(in srgb,var(--h) 32%,transparent)}}
+ .strat{{margin:0 0 20px}}
+ .strat h2{{font-size:13px;font-weight:590;color:var(--accent);text-transform:uppercase;
+  letter-spacing:.03em;margin:0 0 10px}}
+ .plays{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}}
+ .play{{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px}}
+ .ph{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}
+ .pt{{font-weight:590;font-size:12px;color:var(--text)}}
+ .pj{{font-weight:590;font-size:12px;color:var(--color-green)}}
+ .leg{{display:flex;gap:8px;align-items:baseline;padding:2px 0;font-size:12px}}
+ .lm{{color:var(--text-3);min-width:96px}}
+ .lp{{color:var(--text);flex:1}}
+ .lpr{{color:var(--accent);font-weight:590}}
+ .pr{{color:var(--text-3);font-size:11.5px;line-height:1.5;margin:8px 0 0}}
+ tr.grp td{{background:#141516;color:var(--text);font-weight:590;font-size:12px;
+  letter-spacing:-.01em;border-top:2px solid var(--border-2);padding:9px 10px}}
+ tr.grp .rd{{color:var(--text-3);font-weight:510}}
 </style></head><body>
 <h1>Tracker · {date} <span class="count">({len(rows)} logros)</span></h1>
 <p class="sub">Vista en vivo · se refresca sola cada 5s · para anotar deci&iacute;melo por consola · actualizado {now}</p>
+{strat}
 <table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>
 </body></html>"""
     os.makedirs(TRACKER_DIR, exist_ok=True)
@@ -175,7 +258,7 @@ def build(date=None):
     csv_path = os.path.join(TRACKER_DIR, f"{date}.csv")
     rows = _merge(_model_rows(date), _read_existing(csv_path))
     _write_csv(csv_path, rows)
-    _render_html(HTML_PATH, rows, date)
+    _render_html(HTML_PATH, rows, date, _strategy(date))
     return csv_path, rows
 
 

@@ -262,9 +262,12 @@ def _predict_with(models, rating, local, visita, neutral=True, rho=RHO, w=ELO_W,
         f"{'Pocos goles' if o25 < 0.5 else 'Partido abierto'}: Over 2.5 {round(o25*100)}% / BTTS {round(btts*100)}%",
         f"Valla invicta: {local} {round(cs_home*100)}% / {visita} {round(cs_away*100)}%",
     ]
+    # curva de goles: P(over) por linea (0.5..5.5) desde la MISMA matriz Mg (ya escalada por el
+    # factor de torneo). La consume analizar._best_ou para elegir la linea de goles mas jugable.
+    goals_curve = [[round(n + 0.5, 1), round(over(n + 1), 4)] for n in range(6)]
     return dict(local=local, visita=visita, lh=lh, la=la, eh=eh, ea=ea, pois=pz, elo=ez, blend=blend,
                 over=o25, over15=over(2), over35=over(4), btts=btts, cs_home=cs_home, cs_away=cs_away,
-                score=(int(sc[0]), int(sc[1])),
+                goals_curve=goals_curve, score=(int(sc[0]), int(sc[1])),
                 pick=(local if fav_o == 1 else visita if fav_o == -1 else "Empate"), prob_top=prob_top,
                 level="ALTA" if prob_top >= 0.55 else "MEDIA" if prob_top >= 0.42 else "BAJA",
                 market="1X2", insights=ins)

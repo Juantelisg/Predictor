@@ -24,14 +24,29 @@ SCHED_TTL = 6 * 3600             # schedule del equipo: cambia al jugar
 SUM_TTL = 30 * 24 * 3600         # stats por partido: inmutables
 N_GAMES, MIN_APP = 10, 3
 
-# (etiqueta ES, stat de ESPN, lineas). '_ga' = goles+asist (derivado).
+# (etiqueta ES, stat de ESPN, lineas, ROL habilitado). '_ga' = goles+asist (derivado).
+# rol: 'att' = solo jugadores ofensivos con volumen real de tiro; 'gk' = solo arqueros.
 MARKETS = [
-    ("tiros al arco",    "shotsOnTarget", [0.5, 1.5]),
-    ("goles",            "totalGoals",    [0.5]),
-    ("asistencias",      "goalAssists",   [0.5]),
-    ("gol o asistencia", "_ga",           [0.5]),
-    ("tiros",            "totalShots",    [0.5, 1.5, 2.5]),
+    ("tiros al arco",    "shotsOnTarget", [0.5, 1.5],      "att"),
+    ("gol o asistencia", "_ga",           [0.5],           "att"),
+    ("goles",            "totalGoals",    [0.5],           "att"),
+    ("asistencias",      "goalAssists",   [0.5],           "att"),
+    ("tiros",            "totalShots",    [0.5, 1.5, 2.5], "att"),
+    ("tapadas",          "saves",         [1.5, 2.5, 3.5], "gk"),
 ]
+
+# baseline poblacional por (mercado, linea) para la contraccion Beta-Binomial (anti-sobreconfianza
+# de muestra chica: la tasa cruda se regresa hacia la media tipica del mercado). Tunable.
+PROP_BASE = {
+    ("tiros al arco", 0.5): 0.55, ("tiros al arco", 1.5): 0.28,
+    ("gol o asistencia", 0.5): 0.38,
+    ("goles", 0.5): 0.28, ("asistencias", 0.5): 0.18,
+    ("tiros", 0.5): 0.70, ("tiros", 1.5): 0.45, ("tiros", 2.5): 0.28,
+    ("tapadas", 1.5): 0.60, ("tapadas", 2.5): 0.38, ("tapadas", 3.5): 0.20,
+}
+PROP_K = 5             # fuerza del prior (contrae hacia el baseline). Chico = respeta al jugador estrella.
+MIN_SHOTS_ATT = 1.0    # tiros/juego minimos para props ofensivos: mata centrales/laterales/MC defensivos
+HEADLINE = {"tiros al arco", "gol o asistencia", "tapadas"}   # mercados titulares para 'props confiables'
 
 
 def _json(url, ttl):
@@ -47,6 +62,25 @@ def _pos_word(pos):
     if "B" in p or p.startswith("D") or p.startswith("C"):
         return "defender"
     return "midfielder"
+
+
+def _role(pos):
+    """Rol para el gate de props desde el slot de ESPN (G, CD-L, LB, AM-R, F, LM, SUB...):
+    'gk' arquero · 'def' central/lateral (sin props) · 'att' ofensivo (se filtra ademas por volumen)."""
+    p = (pos or "").upper()
+    if p.startswith("G"):
+        return "gk"
+    if p.startswith("CD") or p.startswith("CB") or p.startswith("D") or p in ("LB", "RB", "LWB", "RWB", "WB"):
+        return "def"
+    return "att"       # F/ST/CF/W/AM/LM/RM/CM/M/SUB -> potencial ofensivo (lo decide el volumen de tiro)
+
+
+def _shrink(hits, games, base):
+    """Beta-Binomial: contrae la tasa hacia el baseline poblacional (anti-sobreconfianza de muestra
+    chica). p = (hits + K*base) / (games + K). None si no hay juegos."""
+    if not games:
+        return None
+    return (hits + PROP_K * base) / (games + PROP_K)
 
 
 def team_id(name, date=None):
@@ -141,10 +175,13 @@ def candidates(team_name, espn_id=None, tag=None, date=None):
         apps = e["apps"]                               # viejo -> reciente
         if len(apps) < MIN_APP:
             continue
-        pos = _pos_word(e["pos"])
-        if pos == "goalkeeper":                        # todos nuestros mercados son ofensivos
-            continue
-        for market_es, key, lines in MARKETS:
+        role = _role(e["pos"])                         # gk / def / att desde el slot ESPN
+        avg_shots = sum((st.get("totalShots") or 0) for st in apps) / len(apps)
+        for market_es, key, lines, mrole in MARKETS:
+            if mrole != role:                          # tapadas SOLO arqueros; ofensivos SOLO no-arqueros
+                continue
+            if mrole == "att" and avg_shots < MIN_SHOTS_ATT:   # volumen real de tiro (mata centrales/DM)
+                continue
             for line in lines:
                 vals = [_val(st, key) for st in apps]
                 h5, g5, pct5 = _hitrate(vals[-5:], line)
@@ -152,17 +189,44 @@ def candidates(team_name, espn_id=None, tag=None, date=None):
                 _, gall, pctall = _hitrate(vals, line)
                 if g10 < MIN_APP or not h10:           # sin muestra o el over nunca ocurrio
                     continue
+                base = PROP_BASE.get((market_es, line), 0.4)
+                p = _shrink(h10, g10, base)            # prob contraida hacia el baseline (no la tasa cruda)
                 score = (pct5 or 0) * 0.6 + (pct10 or 0) * 0.3 + min(gall, 10) * 0.5
                 out.append({
-                    "who": name, "team": tag or team_name, "position": pos,
-                    "market": market_es, "over": True, "side": f"over {line}", "line": line,
+                    "who": name, "team": tag or team_name, "position": _pos_word(e["pos"]),
+                    "role": role, "market": market_es, "over": True, "side": f"over {line}", "line": line,
                     "l5": pct5, "l10": pct10, "season": pctall,
                     "games": g5, "games_l5": g5, "hits_l5": h5,
-                    "games_l10": g10, "hits_l10": h10,
+                    "games_l10": g10, "hits_l10": h10, "avg_shots": round(avg_shots, 1),
+                    "p": round(p, 4) if p is not None else None, "base": base,
                     "read": _read(pct5), "signal": "", "_src": "espn", "_score": score,
                 })
     out.sort(key=lambda r: r.pop("_score"), reverse=True)
     return out
+
+
+def select_props(cands, n=8, per_player=1, gate=0.58, ceil=0.90):
+    """De todos los candidatos, elige los PROPS CONFIABLES: mercados titulares (SOT/G+A/tapadas)
+    con prob contraida `p` en banda [gate, ceil], ordenados por `p`, deduplicados por jugador
+    (evita que un crack inunde con 5 lineas). Salida = shortlist jugable del partido."""
+    pool = sorted((c for c in cands if c.get("p") and gate <= c["p"] <= ceil
+                   and c["market"] in HEADLINE),
+                  key=lambda c: c["p"], reverse=True)
+    seen, out = {}, []
+    for c in pool:
+        if seen.get(c["who"], 0) >= per_player:
+            continue
+        seen[c["who"]] = seen.get(c["who"], 0) + 1
+        out.append(c)
+        if len(out) >= n:
+            break
+    return out
+
+
+def match_props(home, away, date=None, n=8):
+    """Props confiables del partido (ambos equipos), gateados por posicion+volumen y contraidos."""
+    cands = candidates(home, tag=home, date=date) + candidates(away, tag=away, date=date)
+    return select_props(cands, n=n)
 
 
 if __name__ == "__main__":

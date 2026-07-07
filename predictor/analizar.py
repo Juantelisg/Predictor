@@ -200,34 +200,73 @@ def _linemate_trends(lm_codes, league):
         return []
 
 
-# familias APTAS para 'picks confiables' (calibradas o subconfiadas = seguras). cards queda afuera:
-# es la mas sesgada al alza aun con el factor de torneo -> un pick "confiable" de cards mentiria.
-PICK_FAMILIES = {"1x2", "dc", "over", "btts", "corners"}
+# familias APTAS para 'picks confiables'. Con LINEA DINAMICA + calibracion por familia, cards ya
+# no se excluye a mano: su calibrador (cards-sb-v2) + el factor de torneo (regime) + el gate la
+# protegen igual que al resto. El modelo elige la linea mas jugable, no una fija.
+PICK_FAMILIES = {"1x2", "dc", "over", "btts", "corners", "cards"}
+
+# Banda jugable, derivada del estilo del usuario (cuota decimal ~1.30-1.60 = prob implicita ~62-77%).
+PICK_GATE = 0.62      # piso de prob calibrada para ser 'pick confiable' (= gate historico)
+PICK_TARGET = 0.70    # sweet spot (~cuota 1.43): a igualdad, se prefiere la linea mas cercana a esto
+PICK_CEIL = 0.85      # techo SOLO para O/U: por encima la linea es trivial (lock) -> subir de linea
 
 
-def _picks(home, away, resultado, doble, goles, corners, cal_fn):
-    """Picks confiables (deterministas): mercados de equipo con prob CALIBRADA >= 62%, ordenados.
-    Toda prob pasa por el recalibrador por familia (cal_fn); el gate PICK_FAMILIES reemplaza la
-    exclusion manual de cards. Un pick que crudo daba >=62% pero calibrado cae por debajo, se filtra."""
+def _best_ou(curve, family, cal_fn, market_label):
+    """Elige la linea O/U mas jugable de un mercado con distribucion (goles/corners/tarjetas).
+    curve = [[linea, P(over)], ...]. Por linea: calibra P(over) por familia, toma el lado mas
+    probable, y se queda con la que cae en la banda [GATE, CEIL] mas cercana al TARGET. None si
+    ninguna linea tiene lectura firme (= PASAR ese mercado, honesto). Reemplaza la linea fija.
+
+    Ademas adjunta 'alt' = la SIGUIENTE linea del mismo lado, un escalon mas exigente (menos %,
+    mas cerca de lo esperado): Over -> linea+1, Under -> linea-1. Es informativa (no pasa el gate,
+    no se combina en tickets): 'la confiable y seguido la siguiente'."""
+    ladder = sorted(((line, cal_fn(p_over, family)) for line, p_over in (curve or [])),
+                    key=lambda x: x[0])
+    pside = lambda pc: pc if pc >= 0.5 else 1 - pc              # prob del lado mas probable
+    best_i = None
+    for i, (line, pc) in enumerate(ladder):
+        p = pside(pc)
+        if not (PICK_GATE <= p <= PICK_CEIL):
+            continue
+        if best_i is None or abs(p - PICK_TARGET) < abs(pside(ladder[best_i][1]) - PICK_TARGET):
+            best_i = i
+    if best_i is None:
+        return None
+    line, pc = ladder[best_i]
+    side, p = ("Over", pc) if pc >= 0.5 else ("Under", 1 - pc)
+    pick = {"market": market_label, "family": family, "pick": f"{side} {line}", "prob": p}
+    nb = best_i + 1 if side == "Over" else best_i - 1           # escalon mas exigente del mismo lado
+    if 0 <= nb < len(ladder):
+        nline, npc = ladder[nb]
+        np_ = npc if side == "Over" else 1 - npc
+        if 0 < np_ < 1:
+            pick["alt"] = {"pick": f"{side} {nline}", "prob": round(np_, 4)}
+    return pick
+
+
+def _picks(home, away, resultado, doble, goles, corners, cal_fn, cards=None):
+    """Picks confiables (deterministas). Mercados de resultado (1X2/doble/BTTS) con prob CALIBRADA
+    >= GATE (sin techo: una doble alta es un pick valido), y mercados O/U (goles/corners/tarjetas)
+    con LINEA DINAMICA: _best_ou ofrece la linea mas jugable segun lo esperado, no una fija. Toda
+    prob pasa por el recalibrador por familia (cal_fn)."""
     names = {"1X": f"{home} o empate", "X2": f"{away} o empate", "12": "Sin empate"}
-    o25 = cal_fn(goles["over25"], "over")
+    top = max(resultado, key=lambda x: x["cal"])
+    dc = max(doble, key=doble.get)
     bt = cal_fn(goles["btts"], "btts")
-    cand = [
-        {"market": "Resultado", "family": "1x2",
-         "pick": max(resultado, key=lambda x: x["cal"])["label"],
-         "prob": max(resultado, key=lambda x: x["cal"])["cal"]},
-        {"market": "Doble oport.", "family": "dc",
-         "pick": names[max(doble, key=doble.get)], "prob": doble[max(doble, key=doble.get)]},
-        {"market": "Goles", "family": "over", "pick": "Over 1.5", "prob": cal_fn(goles["over15"], "over")},
-        {"market": "Goles", "family": "over",
-         "pick": "Over 2.5" if o25 >= 0.5 else "Under 2.5", "prob": max(o25, 1 - o25)},
-        {"market": "BTTS", "family": "btts",
-         "pick": "Ambos marcan" if bt >= 0.5 else "No ambos", "prob": max(bt, 1 - bt)},
+    bt_side, bt_p = ("Ambos marcan", bt) if bt >= 0.5 else ("No ambos", 1 - bt)
+    fixed = [
+        {"market": "Resultado", "family": "1x2", "pick": top["label"], "prob": top["cal"]},
+        {"market": "Doble oport.", "family": "dc", "pick": names[dc], "prob": doble[dc]},
+        {"market": "BTTS", "family": "btts", "pick": bt_side, "prob": bt_p},
     ]
-    if corners:
-        cand.append({"market": "Corners", "family": "corners", "pick": "Over 8.5",
-                     "prob": cal_fn(corners["o85"], "corners")})
-    picks = [c for c in cand if c["family"] in PICK_FAMILIES and c["prob"] >= 0.62]
+    picks = [c for c in fixed if c["family"] in PICK_FAMILIES and c["prob"] >= PICK_GATE]
+    for curve_dict, fam, label in ((goles, "over", "Goles"),
+                                   (corners, "corners", "Corners"),
+                                   (cards, "cards", "Tarjetas")):
+        if curve_dict and curve_dict.get("curve"):
+            b = _best_ou(curve_dict["curve"], fam, cal_fn, label)
+            if b:
+                picks.append(b)
     for c in picks:
         c["prob"] = round(c["prob"], 4)
         c["level"] = _lvl(c["prob"])
@@ -279,6 +318,8 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
 
     goles = {"over15": round(r["over15"], 4), "over25": round(r["over"], 4),
              "over35": round(r["over35"], 4), "btts": round(r["btts"], 4),
+             "curve": r.get("goals_curve"),        # P(over) por linea -> linea de goles dinamica
+
              # cruda Y calibrada por mercado (T9): el producto/ticket usan la calibrada
              "over15_cal": round(cal_fn(r["over15"], "over"), 4),
              "over25_cal": round(cal_fn(r["over"], "over"), 4),
@@ -292,14 +333,16 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
         import regime
         c = regime.predict("corners", L, V)          # factor de nivel del torneo (v2)
         corners = {"exp": c["total_exp"], "o85": round(c["over85"], 4),
-                   "o95": round(c["over95"], 4), "o105": round(c["over105"], 4)}
+                   "o95": round(c["over95"], 4), "o105": round(c["over105"], 4),
+                   "curve": c.get("curve")}          # P(over) por linea -> linea de corners dinamica
     except Exception:
         pass
     try:
         import regime
         k = regime.predict("cards", L, V)            # v2: corrige la sobreestimacion de amarillas
         cards = {"exp": k["total_exp"], "o25": round(k["over25"], 4),
-                 "o35": round(k["over35"], 4), "o45": round(k["over45"], 4)}
+                 "o35": round(k["over35"], 4), "o45": round(k["over45"], 4),
+                 "curve": k.get("curve")}            # P(over) por linea -> linea de tarjetas dinamica
     except Exception:
         pass
 
@@ -311,7 +354,7 @@ def analyze(local, visita, neutral=True, lm_codes=None, league="wc", ctx=None, d
             "linemate": _linemate_trends(lm_codes, league),
             "panorama": _player_panorama(lm_codes, league),
             "availability": _availability(L, V, date, league),
-            "picks": _picks(L, V, resultado, doble, goles, corners, cal_fn)}
+            "picks": _picks(L, V, resultado, doble, goles, corners, cal_fn, cards)}
 
 
 def run(local, visita, neutral=True, lm_codes=None, league="wc"):
@@ -353,7 +396,8 @@ def run(local, visita, neutral=True, lm_codes=None, league="wc"):
 
     print(f"\n  PICKS CONFIABLES:")
     for p in d["picks"]:
-        print(f"    {p['market']:<14} {p['pick']:<22} {p['prob']*100:>5.1f}%  [{p['level']}]")
+        alt = f"   -> siguiente: {p['alt']['pick']} {p['alt']['prob']*100:.0f}%" if p.get("alt") else ""
+        print(f"    {p['market']:<14} {p['pick']:<22} {p['prob']*100:>5.1f}%  [{p['level']}]{alt}")
 
     print("\n  Cruda = modelo; calibrada = tras recalibrador (calib.py, in-sample; las 3 vias")
     print("  del 1X2 calibradas pueden no sumar 100). Educativo, sin cuotas.\n")
